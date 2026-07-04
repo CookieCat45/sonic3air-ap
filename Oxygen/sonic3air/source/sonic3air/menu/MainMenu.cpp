@@ -46,7 +46,7 @@ MainMenu::MainMenu(MenuBackground& menuBackground) :
 	// Build up menu structure
 	{
 		mMenuEntries.reserve(6);
-		mMenuEntries.addEntry("NORMAL GAME", mainmenu::NORMAL_GAME);
+		//mMenuEntries.addEntry("NORMAL GAME", mainmenu::NORMAL_GAME);
 		mMenuEntries.addEntry("ACT SELECT",  mainmenu::ACT_SELECT);
 		mMenuEntries.addEntry("TIME ATTACK", mainmenu::TIME_ATTACK);
 		mMenuEntries.addEntry("OPTIONS",	 mainmenu::OPTIONS);

@@ -1,5 +1,16 @@
-u16 TotalSpheres = 0
-u16 TotalRings = 0
+global u16 TotalSpheres = 0
+global u16 TotalRings = 0
+
+function u16 GetSpecialStageId()
+{
+	u16 stageId = global.next_bluespheres
+	if (global.sk_bluespheres)
+	{
+		stageId += 7
+	}
+	
+	return stageId
+}
 
 // Game counts the number of blue spheres
 // Ring count is also initialized by this point
@@ -15,10 +26,14 @@ function void fn009ea0()
 function void BlueSpheres.OnBlueSphereCollected()
 {
 	base.BlueSpheres.OnBlueSphereCollected()
-	float percent = abs(bluespheres.blue_remaining-TotalSpheres) / TotalSpheres
-	LogDec = percent
+	u16 collected = abs(bluespheres.blue_remaining-TotalSpheres)
+	float percent = float(collected) / float(TotalSpheres)
+	Log = percent
+	if (percent < 0.1)
+		return
+		
 	u64 id = 1 + (10 * GetSpecialStageId())
-	id += 2 * Math.floor(percent / 0.1)
+	id += 2 * (Math.floorToInt(percent / 0.1)-1)
 	Archipelago.sendLocation(id)
 }
 
@@ -27,22 +42,17 @@ function void BlueSpheres.OnBlueSphereCollected()
 function void fn00972e()
 {
 	base.fn00972e()
-	float percent = bluespheres.rings_collected / TotalRings
-	LogDec = percent
-	u64 id = 2 + (10 * GetSpecialStageId())
-	id += 2 * Math.floor(percent / 0.1)
-	Archipelago.sendLocation(id)
-}
-
-function u16 GetSpecialStageId()
-{
-	u16 stageId = global.next_bluespheres
-	if (global.sk_bluespheres)
+	if (D2.u8 == 4) // Ring was collected
 	{
-		stageId += 7
+		float percent = float(bluespheres.rings_collected) / float(TotalRings)
+		Log = percent
+		if (percent < 0.1)
+			return
+			
+		u64 id = 2 + (10 * GetSpecialStageId())
+		id += 2 * (Math.floorToInt(percent / 0.1)-1)
+		Archipelago.sendLocation(id)
 	}
-	
-	return stageId
 }
 
 // Called when collecting a giant ring
@@ -115,4 +125,9 @@ function void fn0616e6()
 			}
 		}
 	}
+}
+
+function u8 BlueSpheres.getNextOpenStageIndex()
+{
+	return global.next_bluespheres
 }

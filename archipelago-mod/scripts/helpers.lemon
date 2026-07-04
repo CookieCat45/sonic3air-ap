@@ -1,9 +1,48 @@
 function u64 Archipelago.getZoneActIdOffset()
 {
-	return u64[((global.zone+1) * 1000) + (global.act.apparent * 500)]
+	return ((global.zone+1) * 1000) + (global.act.apparent * 500)
 }
 
 function u64 Archipelago.getObjectId_xPos()
 {
+	System.writeDisplayLine(stringformat("%d %d", Archipelago.getZoneActIdOffset(), objA0.position.x/100))
 	return Archipelago.getZoneActIdOffset() + (objA0.position.x/100)
+}
+
+function void Archipelago.ApplySpeedUp()
+{
+	char.bonus_effect |= char.bonus.SPEED_UP
+	char.speedup.countdown = 150			// "char.speedup.countdown", decreases every 8 frames
+	if (!isMainCharacter(CHARACTER_TAILS))
+	{
+		setSpeedCapProperties(addressof(global.move.speedcap))			// Address: 0xfffff760
+	}
+	else
+	{
+		setSpeedCapProperties(addressof(global.move.speedcap.tails))	// Address: 0xfffffec0
+	}
+
+	changeMusicTempo(8)
+}
+
+function void Archipelago.ApplyInvincibility()
+{
+	if (super.active == 0 && super.active.tails == 0)
+	{
+		char.bonus_effect |= char.bonus.INVINCIBLE
+		char.invinc.countdown = 150
+		if (!level.boss_encounter && char.drown_countdown > 12)
+		{
+			playMusic(MUSIC_INVINCIBLE)
+		}
+		
+		u32[0xffffcd7c] = addressof(Invincibility.Init)	// Invincibility stars
+		u16[0xffffcd7c + 0x42] = 0xffffb000
+	}
+}
+
+function string Archipelago.GetPersistentStorageFile()
+{
+	string seed = Archipelago.getSeedName()
+	return stringformat("archipelago/s3air_archipelago_%s", seed)
 }

@@ -1,18 +1,16 @@
-#if ARCHIPELAGO // only enable this mod in the archipelago build of the game
+#if ARCHIPELAGO
 
+//# script-feature-level(2)
 include specialstages
 include helpers
 include actselect_ap
 
+constant u32 Addr.LastItemIndex = 0x880100
+
 function void Init()
 {
 	base.Init()
-	debug_mode.enabled = 1
-}
-
-function void APUpdate()
-{
-	
+	//debug_mode.enabled = 1
 }
 
 function void Archipelago.OnConnected()
@@ -25,22 +23,177 @@ function void Archipelago.OnDisconnected()
 	System.writeDisplayLine("Lost connection to Archipelago server")
 }
 
-function void MainMenuBG.Update(u16 cameraForegroundX, u16 cameraBackgroundX)
+function void Archipelago.OnNewItem(string item, s32 index)
 {
-	base.MainMenuBG.Update(cameraForegroundX, cameraBackgroundX)
-	APUpdate()
+	if (s32[Addr.LastItemIndex] == 0)
+	{
+		string seed = Archipelago.getSeedName()
+		System.loadPersistentData(Addr.LastItemIndex, 4, "s3air_archipelago", stringformat("LastItemIndex_%s", seed), false)
+		if (s32[Addr.LastItemIndex] == 0)
+		{
+			// just so we don't keep loading this repeatedly if it's uninitialized
+			s32[Addr.LastItemIndex] = -1
+		}
+	}
+	
+	if (index <= s32[Addr.LastItemIndex])
+	{
+		return
+	}
+	
+	System.writeDisplayLine(stringformat("Got Item: %s", item))
+	u64 itemEffectFlags = Archipelago.getDataInt("ItemEffectFlags")
+	u32 storedRings = Archipelago.getDataInt("StoredRings")
+	u16 storedLives = Archipelago.getDataInt("StoredLives")
+	if (item == "Invincibility") 
+	{
+		itemEffectFlags |= char.bonus.INVINCIBLE
+	}
+	else if (item == "Speed Shoes") 
+	{
+		itemEffectFlags |= char.bonus.SPEED_UP
+	}
+	else if (item == "Fire Shield") 
+	{
+		itemEffectFlags &= ~char.bonus.ALL_SHIELDS
+		itemEffectFlags |= char.bonus.SHIELD_FIRE
+	}
+	else if (item == "Bubble Shield") 
+	{
+		itemEffectFlags &= ~char.bonus.ALL_SHIELDS
+		itemEffectFlags |= char.bonus.SHIELD_BUBBLE
+	}
+	else if (item == "Electric Shield") 
+	{
+		itemEffectFlags &= ~char.bonus.ALL_SHIELDS
+		itemEffectFlags |= char.bonus.SHIELD_LIGHTNING
+	}
+	else if (item == "10 Rings") 
+	{
+		storedRings += 10
+	}
+	else if (item == "Extra Life") 
+	{
+		storedLives++
+	}
+	
+	Archipelago.setDataInt("ItemEffectFlags", itemEffectFlags)
+	Archipelago.setDataInt("StoredRings", storedRings)
+	Archipelago.setDataInt("StoredLives", storedLives)
 }
 
-function void UpdateGameObjects()
+function void Archipelago.OnReceivedItems(s32 highestIndex, bool progression)
 {
-	base.UpdateGameObjects()
-	APUpdate()
+	string seed = Archipelago.getSeedName()
+	if (s32[Addr.LastItemIndex] == 0)
+	{
+		System.loadPersistentData(Addr.LastItemIndex, 4, "s3air_archipelago", stringformat("LastItemIndex_%s", seed), false)
+	}
+	
+	if (highestIndex > s32[Addr.LastItemIndex])
+	{
+		s32[Addr.LastItemIndex] = highestIndex
+		System.savePersistentData(Addr.LastItemIndex, 4, "s3air_archipelago", stringformat("LastItemIndex_%s", seed), false)
+		if (progression)
+		{
+			playSound(0x68)
+		}
+	}
 }
 
-function void TitleScreen()
+function void OnCharacterUpdate()
 {
-	base.TitleScreen()
-	APUpdate()
+	if (global.rolling_demo || Game.isTimeAttack())
+		return
+	
+	// Process items with instant effects
+	// Rings
+	u32 storedRings = Archipelago.getDataInt("StoredRings")
+	if (storedRings > 0)
+	{
+		addRings(storedRings)
+		Archipelago.setDataInt("StoredRings", 0)
+	}
+	
+	// Lives
+	u32 storedLives = Archipelago.getDataInt("StoredLives")
+	Archipelago.setDataInt("StoredLives", 0)
+	while (storedLives > 0)
+	{
+		gainExtraLife()
+		storedLives--
+	}
+	
+	u64 itemEffectFlags = Archipelago.getDataInt("ItemEffectFlags")
+	if (itemEffectFlags)
+	{
+		if (itemEffectFlags & char.bonus.INVINCIBLE)
+		{
+			Archipelago.ApplyInvincibility()
+		}
+		
+		if (itemEffectFlags & char.bonus.SPEED_UP)
+		{
+			Archipelago.ApplySpeedUp()
+		}
+		
+		// Apply a shield if we don't have one
+		if ((char.bonus_effect & char.bonus.ANY_SHIELD) == 0)
+		{
+			if (itemEffectFlags & char.bonus.SHIELD_FIRE)
+			{
+				fn0611d6()
+				char.bonus_effect |= char.bonus.ANY_SHIELD
+			}
+			else if (itemEffectFlags & char.bonus.SHIELD_BUBBLE)
+			{
+				fn061200()
+				char.bonus_effect |= char.bonus.ANY_SHIELD
+			}
+			else if (itemEffectFlags & char.bonus.SHIELD_LIGHTNING)
+			{
+				fn06122a()
+				char.bonus_effect |= char.bonus.ANY_SHIELD
+			}
+		}
+		
+		Archipelago.setDataInt("ItemEffectFlags", 0)
+	}
 }
 
-#endif // ARCHIPELAGO
+//# address-hook(0x007a74) end(0x007d20)
+//# translated(0x007d64) end(0x007d6a)
+function void LevelSelect()
+{
+	// No Level Select menu in AP, unless we're in debug
+	if (!debug_mode.enabled)
+	{
+		Game.returnToMainMenu()
+		return
+	}
+	
+	base.LevelSelect()
+}
+
+//# address-hook(0x010a94) end(0x010ae8)
+function void Character.BaseUpdate.Sonic()
+{
+	base.Character.BaseUpdate.Sonic()
+	OnCharacterUpdate()
+}
+
+//# address-hook(0x01365c) end(0x0136b8)
+function void Character.BaseUpdate.Tails()
+{
+	base.Character.BaseUpdate.Tails()
+	OnCharacterUpdate()
+}
+
+//# address-hook(0x016444) end(0x016498)
+function void Character.BaseUpdate.Knuckles()
+{
+	base.Character.BaseUpdate.Knuckles()
+	OnCharacterUpdate()
+}
+
+#endif

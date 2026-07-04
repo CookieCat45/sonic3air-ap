@@ -7,6 +7,10 @@
 */
 
 #pragma once
+#ifndef AP_NO_SCHEMA
+#define AP_NO_SCHEMA
+#endif
+#define GAME_NAME "Sonic 3 A.I.R."
 #include "oxygen_netcore/network/Sockets.h"
 #include "sonic3air/client/archipelago/apclientpp/apclient.hpp"
 #include <lemon/program/StringRef.h>
@@ -19,11 +23,19 @@ public:
 	bool isConnected();
 	void updateConnection(float timeElapsed);
 	void sendLocation(uint64 id);
+	int getItem(lemon::StringRef name);
 	void callScriptFunction(lemon::FlyweightString functionName);
+	void setDataInt(lemon::StringRef name, int64 data);
+	int64 getDataInt(lemon::StringRef name);
+	bool isZoneAllowed(lemon::StringRef zone);
+	lemon::StringRef getSeedName();
 
 private:
 	bool mConnecting = false;
 	unsigned long mLastConnect = 0;
+	std::map<int, APClient::NetworkItem> mItems;
+	std::map<lemon::StringRef, lemon::StringRef> mGlobalStrings;
+	nlohmann::json mSlotData;
 	static unsigned long now()
     {
 		#if defined WIN32 || defined _WIN32

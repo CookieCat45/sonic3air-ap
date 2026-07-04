@@ -530,6 +530,8 @@ LemonScriptProgram::LoadingResult LemonScriptProgram::loadScriptModule(lemon::Mo
 			if (!rmx::ErrorHandling::isIgnoringAssertsWithHash(hash))
 			{
 				text += "\n\n> Retry compilation right away?";
+				printf(text.c_str());
+				printf("\n");
 
 				const PlatformFunctions::DialogButtons dialogButtons = PlatformFunctions::DialogButtons::YES_NO_CANCEL;
 				const PlatformFunctions::DialogResult result = PlatformFunctions::showDialogBox(rmx::ErrorSeverity::ERROR, dialogButtons, "Script compilation error", text);

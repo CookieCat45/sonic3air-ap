@@ -145,7 +145,7 @@ void ConfigurationImpl::serializeSettingsInternal(JsonSerializer& serializer)
 		{
 			if (!SharedDatabase::getSettings().empty())		// This is going to be empty when the macOS UI calls loadConfiguration externally, causing crash
 			{
-				if (serializer.beginObject("GameSettings"))
+				if (serializer.beginObject("GameSettings_AP"))
 				{
 					const auto& settingsMap = SharedDatabase::getSettings();
 
@@ -193,7 +193,7 @@ void ConfigurationImpl::serializeSettingsInternal(JsonSerializer& serializer)
 	}
 	else
 	{
-		if (serializer.beginObject("GameSettings"))
+		if (serializer.beginObject("GameSettings_AP"))
 		{
 			const auto& settingsMap = SharedDatabase::getSettings();
 			for (auto& pair : settingsMap)

@@ -248,6 +248,25 @@ void Game::registerScriptBindings(lemon::Module& module)
 		builder.addNativeFunction("Archipelago.sendLocation",
 			lemon::wrap(mArchipelago, &Archipelago::sendLocation), defaultFlags)
 		.setParameters("id");
+		
+		builder.addNativeFunction("Archipelago.getItem", 
+			lemon::wrap(mArchipelago, &Archipelago::getItem), defaultFlags)
+		.setParameters("name");
+		
+		builder.addNativeFunction("Archipelago.setDataInt",
+			lemon::wrap(mArchipelago, &Archipelago::setDataInt), defaultFlags)
+		.setParameters("name", "value");
+		
+		builder.addNativeFunction("Archipelago.getDataInt",
+			lemon::wrap(mArchipelago, &Archipelago::getDataInt), defaultFlags)
+		.setParameters("name");
+		
+		builder.addNativeFunction("Archipelago.getSeedName",
+			lemon::wrap(mArchipelago, &Archipelago::getSeedName), defaultFlags);
+			
+		builder.addNativeFunction("Archipelago.isZoneAllowed",
+			lemon::wrap(mArchipelago, &Archipelago::isZoneAllowed), defaultFlags)
+		.setParameters("zone");
 	}
 	
 	// Audio

@@ -1,6 +1,57 @@
+function bool ActSelect.IsZoneUnlocked(u8 zone)
+{
+	if (!Archipelago.isConnected())
+		return false
+	
+	string zoneName = ActSelect.GetZoneName(zone)
+	if (zoneName == "Special Stage")
+		return true
+	
+	return Archipelago.getItem("Zone Unlock: " + zoneName)
+}
+
+function bool Archipelago.isZoneAllowed(string zone)
+{
+	if (zone == "Special Stage")
+		return true
+		
+	return base.Archipelago.isZoneAllowed(zone)
+}
+
+function u8 ActSelect.GetNumZones()
+{
+	u8 specialStages = Archipelago.getDataInt("SpecialStageUnlockItemCount")
+	u8 numZones = ActSelect.ZONES.length()+ specialStages > 0 ? 1 : 0
+	//if (!Game.isSecretUnlocked(SECRET_DOOMSDAY_ZONE))
+	//	--numZones
+	return numZones
+}
+
+function string ActSelect.GetZoneName(u8 zoneNumber)
+{
+	if (zoneNumber == 14)
+	{
+		return "Special Stage"
+	}
+	
+	return ActSelect.ZONES[zoneNumber]
+}
+
+function u8 ActSelect.GetNumActs(u8 zoneNumber)
+{
+	if (zoneNumber == 14)
+	{
+		return Archipelago.getDataInt("SpecialStageUnlockItemCount")
+	}
+	
+	return base.ActSelect.GetNumActs(zoneNumber)
+}
+
 function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedAct, s16 anchorX)
 {
 	bool connected = Archipelago.isConnected()
+	bool unlocked = ActSelect.IsZoneUnlocked(selectedZone)
+	u32 lockedColor = 0x474747ff
 	
 	// Title text
 	Renderer.drawText(ActSelect.TITLE_FONT, anchorX, 12, "ACT SELECT", 0xffffffff, 5, 0, 0xf010, false, true)
@@ -18,7 +69,6 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 	{
 		bool isSelected = (entryIndex == selectedEntry)
 		u32 color = isSelected ? 0xffff00ff : 0xffffffe8
-
 		bool canGoLeft = false
 		bool canGoRight = false
 
@@ -68,23 +118,21 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 				Renderer.drawText(ActSelect.MENU_FONT, px + 110 + arrowAnimOffset, py, ">", color, 5, 0, 0xf000, false, true)
 		}
 		
-		
-		if (!connected)
+		if (!connected || !unlocked)
 		{
 			if (entryIndex == 0)
 			{
-				text = "Not connected..."
+				text = !connected ? "Not connected..." : stringformat("%s\n[LOCKED]", ActSelect.GetZoneName(selectedZone))
 			}
-			else if (entryIndex < 3)
+			else if (!connected && entryIndex < 3)
 			{
 				text = "..."
 			}
 		}
 		
-		Renderer.drawText(ActSelect.MENU_FONT, px + 29, py, text, color, 5, 0, 0xf000, false, true)
+		Renderer.drawText(ActSelect.MENU_FONT, px + 29, py, text, entryIndex == 0 && !unlocked ? lockedColor : color, 5, 0, 0xf000, false, true)
 	}	
 }
-
 
 function void ActSelect.Menu(u8 fadeInMethod)
 {
@@ -254,6 +302,11 @@ function void ActSelect.Menu(u8 fadeInMethod)
 			if (selectedEntry == 0)
 			{
 				selectedZone = clamp(s16(selectedZone) + optionChange, 0, ActSelect.GetNumZones() - 1)
+				while (!Archipelago.isZoneAllowed(ActSelect.GetZoneName(selectedZone)))
+				{
+					optionChange == 1 ? selectedZone++ : selectedZone--
+				}
+				
 				selectedAct = clamp(selectedAct, 0, ActSelect.GetNumActs(selectedZone) - 1)
 			}
 			else if (selectedEntry == 1)
@@ -301,9 +354,16 @@ function void ActSelect.Menu(u8 fadeInMethod)
 			}
 		}
 
-		if (connected && Input.buttonPressed(BUTTON_START))
+		if (Input.buttonPressed(BUTTON_START))
 		{
-			result = (selectedEntry == 3) ? RESULT_GO_BACK : RESULT_START_GAME
+			if (connected && ActSelect.IsZoneUnlocked(selectedZone))
+			{
+				result = (selectedEntry == 3) ? RESULT_GO_BACK : RESULT_START_GAME
+			}
+			else
+			{
+				playSound(0xb2)
+			}
 		}
 		else if (Input.buttonPressed(BUTTON_B) || Input.buttonPressed(BUTTON_BACK))
 		{
@@ -311,12 +371,35 @@ function void ActSelect.Menu(u8 fadeInMethod)
 		}
 	}
 
-	if (connected && result == RESULT_START_GAME)
+	if (result == RESULT_START_GAME)
 	{
 		// Start game now
-		global.zone_act = ActSelect.TranslateZoneAct(selectedZone, selectedAct)
-		Audio.playAudio(0xaf)
-		System.setupCallFrame("EntryFunctions.actSelect")
+		if (selectedZone == 14)
+		{
+			if (selectedAct > 6)
+			{
+				global.sk_bluespheres = 1
+				global.next_bluespheres = selectedAct-7
+			}
+			else
+			{
+				global.sk_bluespheres = 0
+				global.next_bluespheres = selectedAct
+			}
+			
+			global.game_mode = 0x34
+			global.in_extra_stage = 1
+			global.stage_type = 1
+			Audio.playAudio(0xaf)
+			SpecialStage()
+		}
+		else
+		{
+			global.zone_act = ActSelect.TranslateZoneAct(selectedZone, selectedAct)
+			Audio.playAudio(0xaf)
+			System.setupCallFrame("EntryFunctions.actSelect")
+		}
+		
 	}
 	else if (result == RESULT_GO_BACK)
 	{

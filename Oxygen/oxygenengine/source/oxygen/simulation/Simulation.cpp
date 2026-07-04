@@ -639,5 +639,6 @@ void Simulation::applyModSettingsToGlobals()
 
 bool Simulation::isInputFrozen()
 {
-	return mDisableInput;
+	//return mDisableInput;
+	return false;
 }
