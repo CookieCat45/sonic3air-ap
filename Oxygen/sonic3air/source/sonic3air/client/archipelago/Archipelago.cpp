@@ -64,7 +64,7 @@ void Archipelago::setupHandlers()
 					containsSelf = true;
 					break;
 				}
-			}	
+			}
 		}
 		
 		if (!containsSelf) {
@@ -241,10 +241,7 @@ void Archipelago::sendLocation(uint64 id)
 
 int Archipelago::getItem(lemon::StringRef name) 
 {
-	if (!mClient)
-		return 0;
-	
-	int count;
+	int count = 0;
 	for (const auto& [index, item]: mItems) {
         if (mClient->get_item_name(item.item, GAME_NAME) == name.getString()) {
 			count++;
@@ -256,10 +253,5 @@ int Archipelago::getItem(lemon::StringRef name)
 
 lemon::StringRef Archipelago::getSeedName()
 {
-	if (!mClient)
-	{
-		return lemon::StringRef(lemon::Runtime::getActiveRuntime()->addString(""));
-	}
-	
 	return lemon::StringRef(lemon::Runtime::getActiveRuntime()->addString(std::string_view(mClient->get_seed())));
 }

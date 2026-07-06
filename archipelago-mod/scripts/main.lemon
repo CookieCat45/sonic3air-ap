@@ -1,11 +1,14 @@
 #if ARCHIPELAGO
 
 //# script-feature-level(2)
+include tweaks
 include specialstages
 include helpers
 include actselect_ap
 
 constant u32 Addr.LastItemIndex = 0x880100
+constant u32 Addr.ZoneProgressStart = 0x880150
+constant u32 Addr.ZoneProgressStart.Knuckles = 0x880250
 
 function void Init()
 {
@@ -21,6 +24,37 @@ function void Archipelago.OnConnected()
 function void Archipelago.OnDisconnected()
 {
 	System.writeDisplayLine("Lost connection to Archipelago server")
+}
+
+function void Game.onZoneActCompleted(u16 zoneAndAct)
+{
+	if (Game.isTimeAttack())
+	{
+		return
+	}
+	
+	u8 zone = zoneAndAct >> 8
+	u8 act = zoneAndAct & 0xFF
+	
+	// Fix some oddities with zone/act IDs
+	if (zone == 0x16 && act == 0x00) // Lava Reef Act 2 boss
+	{
+		zone = 0x09
+		act = 0x01
+	}
+	else if (zone == 0x17) // Death Egg giant robot
+	{
+		zone = 0x0b
+		act = 0x01
+	}
+	
+	string zoneName = Archipelago.GetZoneNameInternal(zone)
+	LogDec = stringformat("COMPLETED %s: Act %d", zoneName, act)
+	string seed = Archipelago.getSeedName()
+	u32 addr = Addr.ZoneProgressStart + zone
+	System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%s", zone, seed), false)
+	u8[addr] |= 1 << act
+	System.savePersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%s", zone, seed), false)
 }
 
 function void Archipelago.OnNewItem(string item, s32 index)
@@ -41,7 +75,7 @@ function void Archipelago.OnNewItem(string item, s32 index)
 		return
 	}
 	
-	System.writeDisplayLine(stringformat("Got Item: %s", item))
+	//System.writeDisplayLine(stringformat("Got Item: %s", item))
 	u64 itemEffectFlags = Archipelago.getDataInt("ItemEffectFlags")
 	u32 storedRings = Archipelago.getDataInt("StoredRings")
 	u16 storedLives = Archipelago.getDataInt("StoredLives")
@@ -101,10 +135,21 @@ function void Archipelago.OnReceivedItems(s32 highestIndex, bool progression)
 	}
 }
 
+global u8 UpdateDelay = 10
 function void OnCharacterUpdate()
 {
-	if (global.rolling_demo || Game.isTimeAttack())
+	// this is to avoid accidentally wasting consumables in levels that start with cutscenes, e.g. AIZ 1
+	// as there is a short window where the "in cutscene" flag is not set
+	if (UpdateDelay > 0)
+	{
+		UpdateDelay--
 		return
+	}
+	
+	if (global.rolling_demo || Game.isTimeAttack() || Game.isInSkippableCutscene())
+	{
+		return
+	}
 	
 	// Process items with instant effects
 	// Rings
@@ -159,20 +204,6 @@ function void OnCharacterUpdate()
 		
 		Archipelago.setDataInt("ItemEffectFlags", 0)
 	}
-}
-
-//# address-hook(0x007a74) end(0x007d20)
-//# translated(0x007d64) end(0x007d6a)
-function void LevelSelect()
-{
-	// No Level Select menu in AP, unless we're in debug
-	if (!debug_mode.enabled)
-	{
-		Game.returnToMainMenu()
-		return
-	}
-	
-	base.LevelSelect()
 }
 
 //# address-hook(0x010a94) end(0x010ae8)

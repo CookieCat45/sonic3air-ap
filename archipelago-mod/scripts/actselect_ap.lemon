@@ -1,27 +1,11 @@
-function bool ActSelect.IsZoneUnlocked(u8 zone)
-{
-	if (!Archipelago.isConnected())
-		return false
-	
-	string zoneName = ActSelect.GetZoneName(zone)
-	if (zoneName == "Special Stage")
-		return true
-	
-	return Archipelago.getItem("Zone Unlock: " + zoneName)
-}
-
-function bool Archipelago.isZoneAllowed(string zone)
-{
-	if (zone == "Special Stage")
-		return true
-		
-	return base.Archipelago.isZoneAllowed(zone)
-}
-
 function u8 ActSelect.GetNumZones()
 {
-	u8 specialStages = Archipelago.getDataInt("SpecialStageUnlockItemCount")
-	u8 numZones = ActSelect.ZONES.length()+ specialStages > 0 ? 1 : 0
+	u8 numZones = ActSelect.ZONES.length()
+	if (Archipelago.getDataInt("SpecialStageUnlockItemCount") > 0)
+	{
+		numZones++
+	}
+	
 	//if (!Game.isSecretUnlocked(SECRET_DOOMSDAY_ZONE))
 	//	--numZones
 	return numZones
@@ -47,10 +31,32 @@ function u8 ActSelect.GetNumActs(u8 zoneNumber)
 	return base.ActSelect.GetNumActs(zoneNumber)
 }
 
+function u8 ActSelect.GetNumCharacterCombinations()
+{
+	u8 numCharacterCombinations = ActSelect.CHARACTER_COMBINATION_NAME.length()
+	//if (!Game.isSecretUnlocked(SECRET_KNUX_AND_TAILS))
+	//	--numCharacterCombinations
+	return numCharacterCombinations
+}
+
+function string ActSelect.GetCharacterCombinationName(u8 index)
+{
+	string val = ActSelect.CHARACTER_COMBINATION_NAME[index]
+	if (!Archipelago.IsCharUnlocked(index))
+	{
+		val = stringformat("%s", ActSelect.CHARACTER_COMBINATION_NAME[index])
+	}
+	
+	return val 
+}
+
 function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedAct, s16 anchorX)
 {
 	bool connected = Archipelago.isConnected()
-	bool unlocked = ActSelect.IsZoneUnlocked(selectedZone)
+	bool unlocked = Archipelago.IsZoneUnlocked(ActSelect.GetZoneName(selectedZone))
+	bool charUnlocked = Archipelago.IsCharUnlocked(levelselect.characters)
+	bool complete
+	u32 completeColor = 0x36d150ff
 	u32 lockedColor = 0x474747ff
 	
 	// Title text
@@ -59,8 +65,9 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 	// Character preview
 	{
 		s16 px = max(anchorX - 125, 52)		// Move to the right in 4:3
+		u8 alpha = charUnlocked ? 255 : 100
 		Renderer.drawSprite("charselectionbox", px + 3, 159, 0, 0x00, 0xf002)
-		Renderer.drawSprite(ActSelect.GetCharacterCombinationSprite(levelselect.characters), px, 156, 0, 0x00, 0xf004)
+		Renderer.drawSprite(ActSelect.GetCharacterCombinationSprite(levelselect.characters), px, 156, 0, 0x00, 0xf004, 0, alpha)
 	}
 
 	// Render menu texts
@@ -78,13 +85,23 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 			text = ActSelect.GetZoneName(selectedZone)
 			canGoLeft = (selectedZone > 0)
 			canGoRight = (selectedZone < ActSelect.GetNumZones() - 1)
+			u8 zoneInternal = ActSelect.ZONE_INTERNAL_IDS[selectedZone]
+			if (Archipelago.GetZoneActsCompleted(zoneInternal) >= Archipelago.GetZoneRequiredActCount(zoneInternal))
+			{
+				complete = true
+			}
 		}
 		else if (entryIndex == 1)
 		{
 			if (ActSelect.GetNumActs(selectedZone) == 1)
+			{
 				text = "Single Act"
+			}
 			else
+			{
 				text = stringformat("Act %d", selectedAct + 1)
+			}
+				
 			canGoLeft = (selectedZone > 0 || selectedAct > 0)
 			canGoRight = (selectedZone < ActSelect.GetNumZones() - 1 || selectedAct < ActSelect.GetNumActs(selectedZone) - 1)
 		}
@@ -118,11 +135,20 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 				Renderer.drawText(ActSelect.MENU_FONT, px + 110 + arrowAnimOffset, py, ">", color, 5, 0, 0xf000, false, true)
 		}
 		
+		bool actLocked
+		if (entryIndex == 1 && selectedAct > 0)
+		{
+			if (!Archipelago.IsZoneActComplete(selectedZone, selectedAct-1))
+			{
+				actLocked = true
+			}
+		}
+		
 		if (!connected || !unlocked)
 		{
 			if (entryIndex == 0)
 			{
-				text = !connected ? "Not connected..." : stringformat("%s\n[LOCKED]", ActSelect.GetZoneName(selectedZone))
+				text = !connected ? "Not connected..." : text
 			}
 			else if (!connected && entryIndex < 3)
 			{
@@ -130,7 +156,13 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 			}
 		}
 		
-		Renderer.drawText(ActSelect.MENU_FONT, px + 29, py, text, entryIndex == 0 && !unlocked ? lockedColor : color, 5, 0, 0xf000, false, true)
+		bool grayText = (entryIndex == 0 && !unlocked || entryIndex == 1 && (!unlocked || actLocked) || entryIndex == 2 && !charUnlocked)
+		if (complete && entryIndex > 1)
+		{
+			complete = false
+		}
+		
+		Renderer.drawText(ActSelect.MENU_FONT, px + 29, py, text, grayText ? lockedColor : complete ? completeColor : color, 5, 0, 0xf000, false, true)
 	}	
 }
 
@@ -311,6 +343,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 			}
 			else if (selectedEntry == 1)
 			{
+				u8 prevZone = selectedZone
 				if (optionChange < 0)
 				{
 					if (selectedAct > 0)
@@ -335,6 +368,14 @@ function void ActSelect.Menu(u8 fadeInMethod)
 						selectedAct = 0
 					}
 				}
+				
+				if (prevZone != selectedZone)
+				{
+					while (!Archipelago.isZoneAllowed(ActSelect.GetZoneName(selectedZone)))
+					{
+						optionChange == 1 ? selectedZone++ : selectedZone--
+					}
+				}
 			}
 			else if (selectedEntry == 2)
 			{
@@ -356,13 +397,37 @@ function void ActSelect.Menu(u8 fadeInMethod)
 
 		if (Input.buttonPressed(BUTTON_START))
 		{
-			if (connected && ActSelect.IsZoneUnlocked(selectedZone))
+			bool actLocked = false
+			if (selectedAct > 0 && !Archipelago.IsZoneActComplete(selectedZone, selectedAct-1))
+			{
+				// Need to complete the previous act first
+				actLocked = true
+			}
+			
+			bool zoneLocked = !Archipelago.IsZoneUnlocked(ActSelect.GetZoneName(selectedZone))
+			bool charLocked = !Archipelago.IsCharUnlocked(levelselect.characters)
+			if (connected && !actLocked && !zoneLocked && !charLocked)
 			{
 				result = (selectedEntry == 3) ? RESULT_GO_BACK : RESULT_START_GAME
 			}
 			else
 			{
 				playSound(0xb2)
+				string msg
+				if (zoneLocked)
+				{
+					msg = "This zone is not unlocked."
+				}
+				else if (actLocked)
+				{
+					msg = "Complete the previous act first."
+				}
+				else if (charLocked)
+				{
+					msg = "This character is not unlocked."
+				}
+				
+				System.writeDisplayLine(msg)
 			}
 		}
 		else if (Input.buttonPressed(BUTTON_B) || Input.buttonPressed(BUTTON_BACK))
@@ -414,3 +479,4 @@ function void ActSelect.Menu(u8 fadeInMethod)
 		yieldExecution()
 	}
 }
+
