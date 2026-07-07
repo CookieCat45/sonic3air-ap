@@ -26,6 +26,7 @@ public:
 	int getItem(lemon::StringRef name);
 	void callScriptFunction(lemon::FlyweightString functionName);
 	void setDataInt(lemon::StringRef name, int64 data);
+	void triggerGoal();
 	int64 getDataInt(lemon::StringRef name);
 	bool isZoneAllowed(lemon::StringRef zone);
 	lemon::StringRef getSeedName();

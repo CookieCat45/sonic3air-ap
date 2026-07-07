@@ -1,0 +1,176 @@
+function u64 Archipelago.getZoneActIdOffset(u8 zone, u8 act)
+{
+	return ((zone+1) * 1000) + (act * 500)
+}
+
+function u64 Archipelago.getZoneActIdOffset64(u64 zone, u64 act)
+{
+	return ((zone+1) * 1000) + (act * 500)
+}
+
+function u8 Archipelago.GetZoneActsCompleted(u8 zone)
+{
+	u32 addr = Addr.ZoneProgressStart + zone
+	if (u8[addr] <= 0)
+	{
+		string seed = Archipelago.getSeedName()
+		System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%s", zone, seed), false)
+	}
+	
+	u8 count = 0
+	u8 val = u8[addr]
+    while (val > 0)
+	{
+		val = val & (val - 1)
+		count++
+	}
+    
+	return count
+}
+
+function u8 Archipelago.GetZoneRequiredActCount(u8 zone)
+{
+	if (zone == 0x16 || zone == 0x0c || zone == 0x0a)
+	{
+		// Hidden Palace, Doomsday, Sky Sanctuary
+		return 1
+	}
+	
+	return 2
+}
+
+function bool Archipelago.AreAllZonesComplete(bool includeDeathEgg, bool includeDoomsday)
+{
+	u8 count
+	for (u8 i = 0; i < ActSelect.ZONES.length(); i++)
+	{
+		string name = ActSelect.ZONES[i]
+		if (!includeDeathEgg && name == "Death Egg Zone")
+			continue
+		
+		if (!includeDoomsday && name == "Doomsday Zone")
+			continue
+		
+		if (!Archipelago.isZoneAllowed(name))
+			continue
+		
+		u8 zone = ActSelect.ZONE_INTERNAL_IDS[i]
+		if (Archipelago.GetZoneActsCompleted(zone) >= Archipelago.GetZoneRequiredActCount(zone))
+		{
+			count++
+		}
+	}
+
+	u8 totalZones = Archipelago.getDataInt("ZoneCount")
+	if (!includeDeathEgg)
+	{
+		totalZones--
+	}
+	
+	if (!includeDoomsday && Archipelago.isZoneAllowed("Doomsday Zone"))
+	{
+		totalZones--
+	}
+
+	return count >= totalZones
+}
+
+function bool Archipelago.IsZoneActComplete(u8 zone, u8 act)
+{
+	u32 addr = Addr.ZoneProgressStart + zone
+	if (u8[addr] <= 0)
+	{
+		string seed = Archipelago.getSeedName()
+		System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%s", zone, seed), false)
+	}
+	
+	return u8[addr] & (1 << act) != 0
+}
+
+function bool Archipelago.isZoneAllowed(string zone)
+{
+	if (zone == "Special Stage")
+	{
+		return Archipelago.getDataInt("SpecialStageUnlockItemCount") > 0
+	}
+		
+	return base.Archipelago.isZoneAllowed(zone)
+}
+
+function bool Archipelago.IsZoneUnlocked(string zone)
+{
+	if (!Archipelago.isConnected())
+		return false
+	
+	if (zone == "Special Stage")
+	{
+		return Archipelago.getItem("Progressive Special Stage Unlock") > 0
+	}
+	else if (zone == "Death Egg Zone")
+	{
+		u8 unlockMode = Archipelago.getDataInt("ZoneUnlockMode")
+		if (unlockMode == ZoneUnlockMode.SHUFFLED_DEATHEGG)
+		{
+			return Archipelago.AreAllZonesComplete(false, false)
+		}
+	}
+	else if (zone == "Doomsday Zone")
+	{
+		u8 goal = Archipelago.getDataInt("Goal")
+		u8 emeralds = Archipelago.getItem("Chaos Emerald")
+		if (goal == Goal.DOOMSDAY)
+		{
+			return emeralds >= 7
+		}
+		else if (goal == Goal.DOOMSDAY_HYPER)
+		{
+			return emeralds >= 14
+		}
+		else if (goal == Goal.ALLZONES_DOOMSDAY)
+		{
+			return Archipelago.AreAllZonesComplete(true, false) && emeralds >= 7
+		}
+		else if (goal == Goal.ALLZONES_DOOMSDAY_HYPER)
+		{
+			return Archipelago.AreAllZonesComplete(true, false) && emeralds >= 14
+		}
+
+		return false
+	}
+	
+	return Archipelago.getItem("Zone Unlock: " + zone)
+}
+
+function string Archipelago.GetZoneNameInternal(u8 id)
+{
+	if (id == 0x00)
+		return "Angel Island Zone"
+	else if (id == 0x01)
+		return "Hydrocity Zone"
+	else if (id == 0x02)
+		return "Marble Garden Zone"
+	else if (id == 0x03)
+		return "Carnival Night Zone"
+	else if (id == 0x04)
+		return "IceCap Zone"
+	else if (id == 0x05)
+		return "Launch Base Zone"
+	else if (id == 0x06)
+		return "Mushroom Hill Zone"
+	else if (id == 0x07)
+		return "Flying Battery Zone"
+	else if (id == 0x08)
+		return "Sandopolis Zone"
+	else if (id == 0x09)
+		return "Lava Reef Zone"
+	else if (id == 0x16)
+		return "Hidden Palace Zone"
+	else if (id == 0x0a)
+		return "Sky Sanctuary Zone"
+	else if (id == 0x0b)
+		return "Death Egg Zone"
+	else if (id == 0x0c)
+		return "Doomsday Zone"
+	
+	return stringformat("UNKNOWN Zone [0x%x]", id)
+}

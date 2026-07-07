@@ -267,6 +267,9 @@ void Game::registerScriptBindings(lemon::Module& module)
 		builder.addNativeFunction("Archipelago.isZoneAllowed",
 			lemon::wrap(mArchipelago, &Archipelago::isZoneAllowed), defaultFlags)
 		.setParameters("zone");
+
+		builder.addNativeFunction("Archipelago.triggerGoal",
+			lemon::wrap(mArchipelago, &Archipelago::triggerGoal), defaultFlags);
 	}
 	
 	// Audio

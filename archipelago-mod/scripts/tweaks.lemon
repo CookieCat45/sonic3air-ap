@@ -116,16 +116,14 @@ function void TriggerNextZone(u16 zoneAndAct)
 {
 	u8 zone = zoneAndAct >> 8
 	Log = zone
-	if (zone == 0x0a || zone == 0x0d)
+	if (zone == 0x0a || zone == 0x0d || zone == 0x0c)
 	{
-		// We're going to Sky Sanctuary or the outro level for Sonic/Tails
-		// That means Hidden Palace or Death Egg/Doomsday was completed, 
-		// but they don't trigger this callback so do it here
+		// Some levels don't trigger this callback
 		Game.onZoneActCompleted(global.zone_act.apparent)
 	}
 	
-	// Don't prevent entry to LRZ 2 boss, since we consider it a part of LRZ, but it uses HPZ's zone ID
-	if (zoneAndAct != 0x1600 && !Archipelago.IsZoneUnlocked(Archipelago.GetZoneNameInternal(zone)))
+	// Don't prevent entry to some levels (LRZ boss, outro, etc)
+	if (zoneAndAct != 0x1600 && zoneAndAct != 0x1700 && zoneAndAct != 0x0d01 && zoneAndAct != 0x0d00 && !Archipelago.IsZoneUnlocked(Archipelago.GetZoneNameInternal(zone)))
 	{
 		Game.returnToMainMenu()
 		System.writeDisplayLine("The next zone is locked, so you were returned to the main menu.")
@@ -147,4 +145,37 @@ function void LevelSelect()
 	}
 	
 	base.LevelSelect()
+}
+
+//# address-hook(0x009b62) end(0x009d1c)
+function void fn009b62()
+{
+	base.fn009b62()
+	UpdateEmeraldCount()	
+}
+
+//# address-hook(0x0085b0) end(0x0087b8)
+function void fn0085b0()
+{
+	if (BlueSpheres.useGeneratedStages())
+	{
+		// Randomize special stages using archipelago seed
+		u16[0x801000] = u16[u64[Archipelago.getDataInt("Seed") & 0xFFFF]]
+		LogDec = u16[0x801000]
+	}
+	
+	base.fn0085b0()
+}
+
+function void Game.returnToMainMenu()
+{
+	base.Game.returnToMainMenu()
+	Archipelago.CheckGoalCompletion()
+	EmeraldsUpdated = false
+}
+
+function void DataSelect.sharedNewGameStartup()
+{
+	base.DataSelect.sharedNewGameStartup()
+	UpdateEmeraldCount()
 }

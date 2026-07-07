@@ -225,9 +225,6 @@ bool Archipelago::isZoneAllowed(lemon::StringRef zone)
 
 void Archipelago::sendLocation(uint64 id)
 {
-	if (!Archipelago::isConnected())
-		return;
-
 	std::set<int64_t> checkedLocs = mClient->get_checked_locations();
 	if (checkedLocs.find(id) != checkedLocs.end())
 	{
@@ -254,4 +251,9 @@ int Archipelago::getItem(lemon::StringRef name)
 lemon::StringRef Archipelago::getSeedName()
 {
 	return lemon::StringRef(lemon::Runtime::getActiveRuntime()->addString(std::string_view(mClient->get_seed())));
+}
+
+void Archipelago::triggerGoal()
+{
+	mClient->StatusUpdate(APClient::ClientStatus::GOAL);
 }

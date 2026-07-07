@@ -138,7 +138,14 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 		bool actLocked
 		if (entryIndex == 1 && selectedAct > 0)
 		{
-			if (!Archipelago.IsZoneActComplete(selectedZone, selectedAct-1))
+			if (selectedZone == 14)
+			{
+				if (Archipelago.getItem("Progressive Special Stage Unlock") < selectedAct+1)
+				{
+					actLocked = true
+				}
+			}
+			else if (!Archipelago.IsZoneActComplete(ActSelect.ZONE_INTERNAL_IDS[selectedZone], selectedAct-1))
 			{
 				actLocked = true
 			}
@@ -398,7 +405,14 @@ function void ActSelect.Menu(u8 fadeInMethod)
 		if (Input.buttonPressed(BUTTON_START))
 		{
 			bool actLocked = false
-			if (selectedAct > 0 && !Archipelago.IsZoneActComplete(selectedZone, selectedAct-1))
+			if (selectedZone == 14)
+			{
+				if (Archipelago.getItem("Progressive Special Stage Unlock") < selectedAct+1)
+				{
+					actLocked = true
+				}
+			}
+			else if (selectedAct > 0 && !Archipelago.IsZoneActComplete(ActSelect.ZONE_INTERNAL_IDS[selectedZone], selectedAct-1))
 			{
 				// Need to complete the previous act first
 				actLocked = true
@@ -420,7 +434,14 @@ function void ActSelect.Menu(u8 fadeInMethod)
 				}
 				else if (actLocked)
 				{
-					msg = "Complete the previous act first."
+					if (selectedZone == 14)
+					{
+						msg = "You need more Progressive Special Stage Unlock items."
+					}
+					else
+					{
+						msg = "Complete the previous act first."
+					}
 				}
 				else if (charLocked)
 				{

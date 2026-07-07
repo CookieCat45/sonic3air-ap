@@ -4,11 +4,30 @@
 include tweaks
 include specialstages
 include helpers
+include zones
 include actselect_ap
 
 constant u32 Addr.LastItemIndex = 0x880100
 constant u32 Addr.ZoneProgressStart = 0x880150
 constant u32 Addr.ZoneProgressStart.Knuckles = 0x880250
+
+// Option values
+constant u8 Goal.ALLZONES = 0
+constant u8 Goal.DOOMSDAY = 1 
+constant u8 Goal.DOOMSDAY_HYPER = 2
+constant u8 Goal.ALLZONES_DOOMSDAY = 3
+constant u8 Goal.ALLZONES_DOOMSDAY_HYPER = 4
+constant u8 Goal.ALLZONES_SANCTUARY = 5
+
+constant u8 ZoneUnlockMode.LINEAR = 0
+constant u8 ZoneUnlockMode.SHUFFLED = 1
+constant u8 ZoneUnlockMode.SHUFFLED_DEATHEGG = 2
+
+constant u8 KnucklesStoryMode.NORMAL = 0
+constant u8 KnucklesStoryMode.GOAL = 1
+constant u8 KnucklesStoryMode.REMOVED = 2
+constant u8 KnucklesStoryMode.EXCLUSIVE = 3
+constant u8 KnucklesStoryMode.EXCLUSIVE_TAILS = 4
 
 function void Init()
 {
@@ -47,14 +66,20 @@ function void Game.onZoneActCompleted(u16 zoneAndAct)
 		zone = 0x0b
 		act = 0x01
 	}
+	else if (zone == 0x0a) // Sky Sanctuary (sometimes act 0x01 because of Knuckles, just make it the same for consistency)
+	{
+		act = 0x00
+	}
 	
-	string zoneName = Archipelago.GetZoneNameInternal(zone)
-	LogDec = stringformat("COMPLETED %s: Act %d", zoneName, act)
 	string seed = Archipelago.getSeedName()
 	u32 addr = Addr.ZoneProgressStart + zone
 	System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%s", zone, seed), false)
 	u8[addr] |= 1 << act
 	System.savePersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%s", zone, seed), false)
+	u64 id = Archipelago.getZoneActIdOffset64(zone, act)
+	LogDec = stringformat("%s Act %d: %d", Archipelago.GetZoneNameInternal(zone), act, id)
+	Archipelago.sendLocation(id)
+	Archipelago.CheckGoalCompletion()
 }
 
 function void Archipelago.OnNewItem(string item, s32 index)
@@ -133,11 +158,52 @@ function void Archipelago.OnReceivedItems(s32 highestIndex, bool progression)
 			playSound(0x68)
 		}
 	}
+	
+	UpdateEmeraldCount()
+}
+
+function void UpdateEmeraldCount()
+{
+	u8 emeraldCount = Archipelago.getItem("Chaos Emerald")
+	global.chaos_emeralds = 0
+	global.super_emeralds = 0
+	zeroMemory(0xffffffb2, 7)
+	for (u8 i = 1; i <= emeraldCount; i++)
+	{
+		if (global.chaos_emeralds < 7)
+		{
+			u8[0xffffffb2+global.chaos_emeralds] = 1
+			global.chaos_emeralds++
+		}
+		else if (global.super_emeralds < 7)
+		{
+			u8[0xffffffb2+global.super_emeralds] = 3
+			global.super_emeralds++
+		}
+		else
+		{
+			break
+		}
+	}
+	
+	//LogDec = stringformat("Emeralds: %d | %d", global.chaos_emeralds, global.super_emeralds)
 }
 
 global u8 UpdateDelay = 10
+global bool EmeraldsUpdated = false
 function void OnCharacterUpdate()
 {
+	if (global.rolling_demo || Game.isTimeAttack())
+	{
+		return
+	}
+	
+	if (!EmeraldsUpdated)
+	{
+		UpdateEmeraldCount()
+		EmeraldsUpdated = true
+	}
+	
 	// this is to avoid accidentally wasting consumables in levels that start with cutscenes, e.g. AIZ 1
 	// as there is a short window where the "in cutscene" flag is not set
 	if (UpdateDelay > 0)
@@ -146,7 +212,8 @@ function void OnCharacterUpdate()
 		return
 	}
 	
-	if (global.rolling_demo || Game.isTimeAttack() || Game.isInSkippableCutscene())
+	// Player is probably in a cutscene (e.g. AIZ intro) so wait before giving them consumables
+	if (char.control_flags & (control_flag.DISABLE_WALLS|control_flag.DISABLE_UPDATE|control_flag.DISABLE_ANIMATION))
 	{
 		return
 	}
