@@ -8,15 +8,16 @@ function u64 Archipelago.getZoneActIdOffset64(u64 zone, u64 act)
 	return ((zone+1) * 1000) + (act * 500)
 }
 
-function u8 Archipelago.GetZoneActsCompleted(u8 zone)
+function u8 Archipelago.GetZoneActsCompleted(u8 zone, bool knuckles)
 {
-	u32 addr = Addr.ZoneProgressStart + zone
-	if (u8[addr] <= 0)
+	if (!Archipelago.IsKnucklesGoalNecessary())
 	{
-		string seed = Archipelago.getSeedName()
-		System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%s", zone, seed), false)
+		knuckles = false
 	}
 	
+	u32 addr = knuckles ? Addr.ZoneProgressStart.Knuckles + zone : Addr.ZoneProgressStart + zone
+	string seed = Archipelago.getSeedName()
+	System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%d_%s", zone, knuckles, seed), false)
 	u8 count = 0
 	u8 val = u8[addr]
     while (val > 0)
@@ -24,7 +25,7 @@ function u8 Archipelago.GetZoneActsCompleted(u8 zone)
 		val = val & (val - 1)
 		count++
 	}
-    
+	
 	return count
 }
 
@@ -39,8 +40,13 @@ function u8 Archipelago.GetZoneRequiredActCount(u8 zone)
 	return 2
 }
 
-function bool Archipelago.AreAllZonesComplete(bool includeDeathEgg, bool includeDoomsday)
+function bool Archipelago.AreAllZonesComplete(bool includeDeathEgg, bool includeDoomsday, bool knuckles)
 {
+	if (!Archipelago.IsKnucklesGoalNecessary())
+	{
+		knuckles = false
+	}
+	
 	u8 count
 	for (u8 i = 0; i < ActSelect.ZONES.length(); i++)
 	{
@@ -50,18 +56,27 @@ function bool Archipelago.AreAllZonesComplete(bool includeDeathEgg, bool include
 		
 		if (!includeDoomsday && name == "Doomsday Zone")
 			continue
+			
+		if (knuckles && name == "Sky Sanctuary Zone") // Ignore Sky Sanctuary for Knuckles
+			continue
 		
 		if (!Archipelago.isZoneAllowed(name))
 			continue
 		
 		u8 zone = ActSelect.ZONE_INTERNAL_IDS[i]
-		if (Archipelago.GetZoneActsCompleted(zone) >= Archipelago.GetZoneRequiredActCount(zone))
+		if (Archipelago.GetZoneActsCompleted(zone, knuckles) >= Archipelago.GetZoneRequiredActCount(zone))
 		{
 			count++
 		}
 	}
 
 	u8 totalZones = Archipelago.getDataInt("ZoneCount")
+	if (knuckles && Archipelago.IsKnucklesGoalNecessary() && Archipelago.getDataInt("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
+	{
+		totalZones--
+		totalZones--
+	}
+	
 	if (!includeDeathEgg)
 	{
 		totalZones--
@@ -75,16 +90,17 @@ function bool Archipelago.AreAllZonesComplete(bool includeDeathEgg, bool include
 	return count >= totalZones
 }
 
-function bool Archipelago.IsZoneActComplete(u8 zone, u8 act)
+function bool Archipelago.IsZoneActComplete(u8 zone, u8 act, bool knuckles)
 {
-	u32 addr = Addr.ZoneProgressStart + zone
-	if (u8[addr] <= 0)
+	if (!Archipelago.IsKnucklesGoalNecessary())
 	{
-		string seed = Archipelago.getSeedName()
-		System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%s", zone, seed), false)
+		knuckles = false
 	}
 	
-	return u8[addr] & (1 << act) != 0
+	u32 addr = knuckles ? Addr.ZoneProgressStart.Knuckles + zone : Addr.ZoneProgressStart + zone
+	string seed = Archipelago.getSeedName()
+	System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%d_%s", zone, knuckles, seed), false)
+	return (u8[addr] & (1 << act)) != 0
 }
 
 function bool Archipelago.isZoneAllowed(string zone)
@@ -97,45 +113,84 @@ function bool Archipelago.isZoneAllowed(string zone)
 	return base.Archipelago.isZoneAllowed(zone)
 }
 
-function bool Archipelago.IsZoneUnlocked(string zone)
+function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 {
 	if (!Archipelago.isConnected())
 		return false
 	
-	if (zone == "Special Stage")
+	if (!Archipelago.IsKnucklesGoalNecessary())
 	{
-		return Archipelago.getItem("Progressive Special Stage Unlock") > 0
+		knuckles = false
 	}
-	else if (zone == "Death Egg Zone")
+	
+	u8 unlockMode = Archipelago.getDataInt("ZoneUnlockMode")
+	if (zone == "Doomsday Zone")
 	{
-		u8 unlockMode = Archipelago.getDataInt("ZoneUnlockMode")
-		if (unlockMode == ZoneUnlockMode.SHUFFLED_DEATHEGG)
-		{
-			return Archipelago.AreAllZonesComplete(false, false)
-		}
-	}
-	else if (zone == "Doomsday Zone")
-	{
-		u8 goal = Archipelago.getDataInt("Goal")
 		u8 emeralds = Archipelago.getItem("Chaos Emerald")
-		if (goal == Goal.DOOMSDAY)
+		if (!knuckles)
 		{
-			return emeralds >= 7
-		}
-		else if (goal == Goal.DOOMSDAY_HYPER)
-		{
-			return emeralds >= 14
-		}
-		else if (goal == Goal.ALLZONES_DOOMSDAY)
-		{
-			return Archipelago.AreAllZonesComplete(true, false) && emeralds >= 7
-		}
-		else if (goal == Goal.ALLZONES_DOOMSDAY_HYPER)
-		{
-			return Archipelago.AreAllZonesComplete(true, false) && emeralds >= 14
+			u8 goal = Archipelago.getDataInt("Goal")
+			if (goal == Goal.DOOMSDAY)
+			{
+				return emeralds >= 7
+			}
+			else if (goal == Goal.DOOMSDAY_HYPER)
+			{
+				return emeralds >= 14
+			}
+			else if (goal == Goal.ALLZONES_DOOMSDAY)
+			{
+				return Archipelago.AreAllZonesComplete(true, false, false) && emeralds >= 7
+			}
+			else if (goal == Goal.ALLZONES_DOOMSDAY_HYPER)
+			{
+				return Archipelago.AreAllZonesComplete(true, false, false) && emeralds >= 14
+			}
 		}
 
 		return false
+	}
+	else if (zone == "Special Stage")
+	{
+		return Archipelago.getItem("Progressive Special Stage Unlock") > 0
+	}
+	else if (knuckles && zone == "Sky Sanctuary Zone" && Archipelago.getDataInt("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
+	{
+		return Archipelago.AreAllZonesComplete(true, false, true)
+	}
+	else if (unlockMode == ZoneUnlockMode.LINEAR)
+	{
+		u8 index = -1
+		string zones[14]
+		for (u8 i = 0; i < ActSelect.ZONES.length(); i++)
+		{
+			zones[i] = ActSelect.ZONES[i]
+		}
+		
+		if (knuckles && Archipelago.getDataInt("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
+		{
+			// Sky Sanctuary and Death Egg are swapped around for Knuckles in this case
+			zones[12] = "Death Egg Zone"	
+			zones[13] = "Sky Sanctuary Zone"
+		}
+		
+		for (u8 i = 0; i < 14; i++)
+		{
+			if (zones[i] == zone)
+			{
+				index = i
+				break
+			}
+		}
+		
+		return index >= 0 && Archipelago.getItem("Progressive Zone Unlock") >= index+1
+	}
+	else if (zone == "Death Egg Zone")
+	{
+		if (unlockMode == ZoneUnlockMode.SHUFFLED_DEATHEGG)
+		{
+			return Archipelago.AreAllZonesComplete(false, false, knuckles)
+		}
 	}
 	
 	return Archipelago.getItem("Zone Unlock: " + zone)
@@ -151,13 +206,13 @@ function string Archipelago.GetZoneNameInternal(u8 id)
 		return "Marble Garden Zone"
 	else if (id == 0x03)
 		return "Carnival Night Zone"
-	else if (id == 0x04)
-		return "IceCap Zone"
 	else if (id == 0x05)
-		return "Launch Base Zone"
+		return "IceCap Zone"
 	else if (id == 0x06)
-		return "Mushroom Hill Zone"
+		return "Launch Base Zone"
 	else if (id == 0x07)
+		return "Mushroom Hill Zone"
+	else if (id == 0x04)
 		return "Flying Battery Zone"
 	else if (id == 0x08)
 		return "Sandopolis Zone"

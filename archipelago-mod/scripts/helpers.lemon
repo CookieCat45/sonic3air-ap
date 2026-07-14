@@ -85,31 +85,82 @@ function void Archipelago.CheckGoalCompletion()
 		return
 	
 	bool complete = false
-	u8 goal = Archipelago.getDataInt("Goal")
 	u8 emeralds = Archipelago.getItem("Chaos Emerald")
-	if (goal == Goal.ALLZONES)
+	u8 knucklesMode = Archipelago.getDataInt("KnucklesStoryMode")
+	if (knucklesMode < KnucklesStoryMode.EXCLUSIVE)
 	{
-		complete = Archipelago.AreAllZonesComplete(true, true)
+		u8 goal = Archipelago.getDataInt("Goal")
+		if (goal == Goal.ALLZONES)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, false)
+		}
+		else if (goal == Goal.DOOMSDAY)
+		{
+			complete = Archipelago.IsZoneActComplete(0x0c, 0, false) && emeralds >= 7
+		}
+		else if (goal == Goal.DOOMSDAY_HYPER)
+		{
+			complete = Archipelago.IsZoneActComplete(0x0c, 0, false) && emeralds >= 14
+		}
+		else if (goal == Goal.ALLZONES_DOOMSDAY)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, false) && emeralds >= 7
+		}
+		else if (goal == Goal.ALLZONES_DOOMSDAY_HYPER)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, false) && emeralds >= 14
+		}
 	}
-	else if (goal == Goal.DOOMSDAY)
+	
+	bool knucklesExclusive = (knucklesMode == KnucklesStoryMode.EXCLUSIVE || knucklesMode == KnucklesStoryMode.EXCLUSIVE_TAILS)
+	if ((complete || knucklesExclusive) && Archipelago.IsKnucklesGoalNecessary())
 	{
-		complete = Archipelago.IsZoneActComplete(0x0c, 0) && emeralds >= 7
-	}
-	else if (goal == Goal.DOOMSDAY_HYPER)
-	{
-		complete = Archipelago.IsZoneActComplete(0x0c, 0) && emeralds >= 14
-	}
-	else if (goal == Goal.ALLZONES_DOOMSDAY)
-	{
-		complete = Archipelago.AreAllZonesComplete(true, true) && emeralds >= 7
-	}
-	else if (goal == Goal.ALLZONES_DOOMSDAY_HYPER)
-	{
-		complete = Archipelago.AreAllZonesComplete(true, true) && emeralds >= 14
+		u8 goal = Archipelago.getDataInt("KnucklesGoal")
+		if (goal == Goal.ALLZONES)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, true)
+		}
+		else if (goal == Goal.DOOMSDAY)
+		{
+			complete = Archipelago.IsZoneActComplete(0x0c, 0, true) && emeralds >= 7
+		}
+		else if (goal == Goal.DOOMSDAY_HYPER)
+		{
+			complete = Archipelago.IsZoneActComplete(0x0c, 0, true) && emeralds >= 14
+		}
+		else if (goal == Goal.ALLZONES_DOOMSDAY)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, true) && emeralds >= 7
+		}
+		else if (goal == Goal.ALLZONES_DOOMSDAY_HYPER)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, true) && emeralds >= 14
+		}
+		else if (goal == Goal.ALLZONES_SANCTUARY)
+		{
+			complete = Archipelago.IsZoneActComplete(0x0a, 1, true)
+		}
 	}
 	
 	if (complete)
 	{
 		Archipelago.triggerGoal()
 	}
+}
+
+function bool Archipelago.IsKnucklesGoalNecessary()
+{
+	u8 mode = Archipelago.getDataInt("KnucklesStoryMode")
+	return mode != KnucklesStoryMode.NORMAL && mode != KnucklesStoryMode.REMOVED
+}
+
+function bool Archipelago.IsKnucklesExclusive()
+{
+	u8 mode = Archipelago.getDataInt("KnucklesStoryMode")
+	return mode == KnucklesStoryMode.EXCLUSIVE || mode == KnucklesStoryMode.EXCLUSIVE_TAILS
+}
+
+function bool IsPlayingKnuckles()
+{
+	return global.characters == 3 || global.characters == 4
 }

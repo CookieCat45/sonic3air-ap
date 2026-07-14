@@ -47,13 +47,20 @@ function void Archipelago.OnDisconnected()
 
 function void Game.onZoneActCompleted(u16 zoneAndAct)
 {
-	if (Game.isTimeAttack())
+	if (Game.isTimeAttack() || global.rolling_demo)
 	{
 		return
 	}
 	
 	u8 zone = zoneAndAct >> 8
 	u8 act = zoneAndAct & 0xFF
+	u32 addr = Addr.ZoneProgressStart + zone
+	bool knuckles = IsPlayingKnuckles() && Archipelago.IsKnucklesGoalNecessary()
+	if (knuckles)
+	{
+		LogDec = "Playing as Knuckles"
+		addr = Addr.ZoneProgressStart.Knuckles + zone
+	}
 	
 	// Fix some oddities with zone/act IDs
 	if (zone == 0x16 && act == 0x00) // Lava Reef Act 2 boss
@@ -66,16 +73,11 @@ function void Game.onZoneActCompleted(u16 zoneAndAct)
 		zone = 0x0b
 		act = 0x01
 	}
-	else if (zone == 0x0a) // Sky Sanctuary (sometimes act 0x01 because of Knuckles, just make it the same for consistency)
-	{
-		act = 0x00
-	}
 	
 	string seed = Archipelago.getSeedName()
-	u32 addr = Addr.ZoneProgressStart + zone
-	System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%s", zone, seed), false)
+	System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%d_%s", zone, knuckles, seed), false)
 	u8[addr] |= 1 << act
-	System.savePersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%s", zone, seed), false)
+	System.savePersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%d_%s", zone, knuckles, seed), false)
 	u64 id = Archipelago.getZoneActIdOffset64(zone, act)
 	LogDec = stringformat("%s Act %d: %d", Archipelago.GetZoneNameInternal(zone), act, id)
 	Archipelago.sendLocation(id)
@@ -249,7 +251,6 @@ function void OnCharacterUpdate()
 			Archipelago.ApplySpeedUp()
 		}
 		
-		// Apply a shield if we don't have one
 		if ((char.bonus_effect & char.bonus.ANY_SHIELD) == 0)
 		{
 			if (itemEffectFlags & char.bonus.SHIELD_FIRE)
@@ -267,6 +268,11 @@ function void OnCharacterUpdate()
 				fn06122a()
 				char.bonus_effect |= char.bonus.ANY_SHIELD
 			}
+		}
+		else
+		{
+			// If we already had a shield, give 5 rings for compensation
+			addRings(5)
 		}
 		
 		Archipelago.setDataInt("ItemEffectFlags", 0)
