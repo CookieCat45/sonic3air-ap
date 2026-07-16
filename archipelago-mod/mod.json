@@ -9,4 +9,23 @@
 		"ModVersion": "0.1",
 		"GameVersion": "20.07.18.0"
 	},
+	"Settings":
+	{
+		"List":
+		[
+			{
+				"InternalName": "CheckCompass",
+				"DisplayName": "Show Check Compass",
+				"Category": "Gameplay",
+				"Variable": "option.ap.checkCompass",
+				"DefaultValue": "1",
+				"Options":
+				{
+					"0": "No",
+					"1": "Yes",
+					"2": "Arrow Only"
+				}
+			}
+		]
+	}
 }

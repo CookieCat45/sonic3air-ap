@@ -8,121 +8,17 @@ function u32 Game.getSetting(u32 settingId)
 	return base.Game.getSetting(settingId)
 }
 
-//# address-hook(0x0013e4) end(0x0014e4)
-function void UpdateGamePause()
-{
-	// Fix being unable to pause in a special stage started from act select
-	if (lives_counter <= 0 && (global.game_mode & 0x34) == 0)
-	{
-		global.game.paused = false
-		return
-	}
-
-	// Start button pressed?
-	if (control.pad1.pressed & CONTROL_START)
-	{
-		if (!GamePause.BeginPause())
-			return
-
-		global.game.paused = true
-		global.frame_state = 0x10
-
-		GamePause.Menu()
-
-		Standalone.onResumeAfterPause()
-		global.game.paused = false
-
-	#if GAMEAPP
-		// Fix for brief glitch in Blue Spheres special stage
-		if (global.game_mode == 0x34)
-			BlueSpheres.replacePlaneRendering()
-	#endif
-	}
-}
-
-// Called when collecting a giant ring
-//# address-hook(0x0616e6) end(0x06178a)
-function void fn0616e6()
-{
-	Object.AnimationProgressByLocalA1()
-	if (debug_mode.state == 0 && objA0.animation.sprite >= 8)
-	{
-		A1 = 0x06178c
-		fn0858f8()
-		if (D0.u16 != 0)
-		{
-			A1 = 0xffffb000
-			if (u8[A1 + 0x05] >= base_state.DIED)
-				return
-
-			playSound(0xb3)
-		
-		#if STANDALONE
-			Standalone.onGiantRingCollected()
-		#endif
-
-			bool enterRing = true
-			if (global.super_emeralds == 7)
-			{
-				// All 14 Emeralds collected
-				//  -> Now Giant Rings always grant 50 rings and can't be entered any more
-				enterRing = false
-			}
-			else if (global.chaos_emeralds == 7)
-			{
-				// All 7 Chaos Emeralds collected, but not all Super Emeralds yet
-				//  -> Giant Rings can only be entered in S&K half
-				//  -> However, S3AIR also allows you to enter Giant Rings in the S3 half after you've visited the HPZ emerald cave once (relevant after finishing the game in this save game slot)
-				enterRing = GiantRing.isSuperEmeraldStage()
-			}
-			
-			enterRing = false
-			LogDec = Archipelago.getObjectId_xPos()
-			Archipelago.sendLocation(Archipelago.getObjectId_xPos())
-			if (!enterRing)
-			{
-				// Do not enter the ring, but grant 50 rings
-				GiantRing.Grant50Rings()
-				return
-			}
-			
-			objA0.base_state = 0x04
-			char.animation.sprite.backup = 0xff
-
-			A1 = 0xffffb000
-			objA1.state = char.state.DISAPPEARED
-			objA1.animation.sprite = 0
-			u8[A1 + 0x2e] = (control_flag.DISABLE_WALLS | control_flag.DISABLE_ANIMATION | control_flag.DISABLE_UPDATE | 0x10)
-
-			if (tails.carrying)
-			{
-				A1 = 0xffffb04a
-				objA1.state = char.state.DISAPPEARED
-				objA1.animation.sprite = 0
-				u8[A1 + 0x2e] = (control_flag.DISABLE_WALLS | control_flag.DISABLE_ANIMATION | control_flag.DISABLE_UPDATE | 0x10)
-			}
-
-			if (allocDynamicObjectStd())
-			{
-				// Warp flash effect
-				objA1.update_address = 0x0617be
-				u16[A1 + 0x46] = A0.u16
-			}
-		}
-	}
-}
-
 function void TriggerNextZone(u16 zoneAndAct)
 {
 	u8 zone = zoneAndAct >> 8
 	Log = zone
-	if (zone == 0x0a || zone == 0x0d || zone == 0x0c || zoneAndAct == 0x1600 || zoneAndAct == 0x1601 && IsPlayingKnuckles())
+	if (zone == 0x0a || zone == 0x0d || zone == 0x0c || zoneAndAct == 0x1600 || zoneAndAct == 0x1601 && isMainCharacter(CHARACTER_KNUCKLES))
 	{
 		// Some levels don't trigger this callback
 		Game.onZoneActCompleted(global.zone_act.apparent)
 	}
 	
-	if (Archipelago.IsKnucklesGoalNecessary() && Archipelago.getDataInt("KnucklesGoal") != Goal.ALLZONES_SANCTUARY && IsPlayingKnuckles() && zoneAndAct == 0x0a01)
+	if (Archipelago.IsKnucklesGoalNecessary() && Archipelago.getDataInt("KnucklesGoal") != Goal.ALLZONES_SANCTUARY && isMainCharacter(CHARACTER_KNUCKLES) && zoneAndAct == 0x0a01)
 	{
 		// If Knuckles transitioning into Sky Sanctuary, don't go to the boss version if it's not our goal
 		zoneAndAct = 0x0a00
@@ -130,13 +26,14 @@ function void TriggerNextZone(u16 zoneAndAct)
 	
 	// Don't prevent entry to some levels (LRZ boss, outro, etc)
 	bool invalidAct = zoneAndAct != 0x1600 && zoneAndAct != 0x1700 && zoneAndAct != 0x0d01 && zoneAndAct != 0x0d00
-	if (invalidAct && !Archipelago.IsZoneUnlocked(Archipelago.GetZoneNameInternal(zone), IsPlayingKnuckles()))
+	if (invalidAct && !Archipelago.IsZoneUnlocked(Archipelago.GetZoneNameInternal(zone), isMainCharacter(CHARACTER_KNUCKLES)))
 	{
 		Game.returnToMainMenu()
 		System.writeDisplayLine("The next zone is locked, so you were returned to the main menu.")
 		return
 	}
 	
+	ResetGiantRingIDs()
 	base.TriggerNextZone(zoneAndAct)
 }
 
@@ -171,7 +68,7 @@ function void LevelSelect()
 function void fn009b62()
 {
 	base.fn009b62()
-	UpdateEmeraldCount()	
+	Archipelago.UpdateEmeraldCount()	
 }
 
 function void Game.returnToMainMenu()
@@ -184,147 +81,59 @@ function void Game.returnToMainMenu()
 function void DataSelect.sharedNewGameStartup()
 {
 	base.DataSelect.sharedNewGameStartup()
-	UpdateEmeraldCount()
+	Archipelago.UpdateEmeraldCount()
 }
 
-//# address-hook(0x0085b0) end(0x0087b8)
-function void fn0085b0()
+// Fix for Knuckles & Tails
+function u8 getMainCharacter()
 {
-	bool useSKLayouts = (global.lock_on_state != 0 || global.sk_bluespheres)
-	bool useGeneratedStage = BlueSpheres.useGeneratedStages()
-	bool isGeneratedStageInMainGame = (useGeneratedStage && bluespheres.minigame_mode == 0)
-
-	if (!useGeneratedStage)
+	if (global.characters == CHARS_SONIC_AND_TAILS || global.characters == CHARS_SONIC_ALONE)
 	{
-		// Main game stages
-		Kosinski.decompress(u32[0x1e4078], 0xffff0000)		// This is actually the special stage layout data getting decompressed
-
-		global.next_bluespheres = BlueSpheres.getNextOpenStageIndex()
-
-		// Load level layout, either from S3 or S&K
-		A2 = useSKLayouts ? 0x008590 : 0x25e2d8
-		A2 = u32[A2 + global.next_bluespheres * 4]
-		if (!useSKLayouts)
-		{
-			A2 += 0x200000
-		}
-
-		zeroMemory(0xfffff000, 0x100)
-		copyMemory(0xfffff100, A2, 0x400)
-		zeroMemory(0xfffff500, 0x100)
-		A2 += 0x400
-
-		u16[0xffffe426] = u16[A2]
-		bluespheres.position.x = u16[A2+2]
-		bluespheres.position.y = u16[A2+4]
-		bluespheres.rings_remaining = u16[A2+6]
-
-		A1 = u32[0x0088ba + global.next_bluespheres * 0x10]
-		if (useSKLayouts)
-		{
-			A1 += 0x0130
-		}
+		return CHARACTER_SONIC
+	}
+	else if (global.characters == CHARS_TAILS_ALONE)
+	{
+		return CHARACTER_TAILS
+	}
+	else if (global.characters == CHARS_KNUCKLES_ALONE || global.characters == CHARS_KNUCKLES_AND_TAILS)
+	{
+		return CHARACTER_KNUCKLES
 	}
 	else
 	{
-		// Bluespheres mini-game mode
-		Kosinski.decompress(u32[0x1e407c], 0xffff0000)	// Loads lookup data for the 0x80 quarter layouts, total size is 0x900 bytes
-
-		zeroMemory(0xfffff000, 0x600)
-
-	#if STANDALONE
-		if (isGeneratedStageInMainGame)
-		{
-			LogDec = Archipelago.getDataInt("SpecialSeed")
-			// Most of the "magic numbers" you see are more or less arbitrary numbers
-			u32 stageNumber = 0x13571113 + u32(Archipelago.getDataInt("SpecialSeed")) * 0x09070503 + global.next_bluespheres + global.sk_bluespheres * 8
-
-			// Limit difficulty to a maximum value of 6, as higher ones tend to get kind of unfair if you can't just try them over and over again
-			u8 difficulty = 0xff
-			while (difficulty > 6)
-			{
-				stageNumber += 0x050b030f
-				BlueSphere.setGeneratedStage(stageNumber)
-
-				difficulty = 0
-				for (u8 quarter = 0; quarter < 4; ++quarter)
-				{
-					u16 type = u8[0xffffffa2 + quarter] & 0x7f
-					if (type == 0x6d)		// Do not allow type 0x6d specifically, because it is EVIL!
-						difficulty += 0x10
-					difficulty += u8[0xffff0080 + type]
-				}
-			}
-		}
-
-		if (bluespheres.minigame_mode == 0)
-		{
-			global.next_bluespheres = BlueSpheres.getNextOpenStageIndex()
-		}
-		else
-	#endif
-		{
-			global.next_bluespheres = 0
-		}
-
-		bluespheres.direction = 0x40
-		u8[0xffffe427] = 0
-		bluespheres.position.x = 0x1000
-		bluespheres.position.y = 0x0300
-		bluespheres.rings_remaining = 0
-		u16[0xffffffac] = 0
-
-		// To build the generated stage, cycle through 4 quarters that get selected individually
-		for (u8 quarter = 0; quarter < 4; ++quarter)
-		{
-			u16 type = u8[0xffffffa2 + quarter] & 0x7f
-			bluespheres.rings_remaining += u8[0xffff0000 + type]
-			u16[0xffffffac] += u8[0xffff0080 + type]				// Affects the difficulty (stored in upper byte)
-
-			A2 = 0xffff0100 + (type << 8)
-			A1 = 0x0087ba + quarter * 8
-			D3.u16 = u16[A1]
-			D4.u16 = u16[A1+2]
-			D5.u16 = u16[A1+4]
-			D0.u16 = u16[A1+6]
-
-			A3 = 0xfffff100 + D0.u16
-			for (u8 y = 0; y < 0x10; ++y)
-			{
-				u16 offset = D4.u16
-				for (u8 x = 0; x < 0x10; ++x)
-				{
-					u8[A3 + x] = u8[A2 + offset]
-					offset += D3.u16
-				}
-				A3 += 0x20
-				D4.u16 += D5.u16
-			}
-		}
-
-		A1 = u32[0x0088ba + (u8[0xffffffa4] & 0x07) * 0x10]
-		if (u8[0xffffffa4] & 0x08)
-		{
-			A1 += 0x0130
-		}
+		assert(false, "Unsupported character selection")
+		return CHARACTER_SONIC
 	}
+}
 
-	// Load colors
-	bluespheres.palette.baseAddress = A1
-	A2 = 0xfffffc80
-	copyMemory(A2 + 0x70, A1, 0x10)			// Ground colors
-	copyMemory(A2 + 0x50, A1 + 0x20, 6)		// Emerald colors
-
-#if STANDALONE
-	if (isGeneratedStageInMainGame)
+//# address-hook(0x0013e4) end(0x0014e4)
+function void UpdateGamePause()
+{
+	// Fix being unable to pause in a special stage started from act select
+	if (lives_counter <= 0 && (global.game_mode & 0x34) == 0)
 	{
-		// Overwrite the emerald colors with the correct ones
-		A1 = u32[0x0088ba + global.next_bluespheres * 0x10]
-		if (useSKLayouts)
-		{
-			A1 += 0x0130
-		}
-		copyMemory(A2 + 0x50, A1 + 0x20, 6)
+		global.game.paused = false
+		return
 	}
-#endif
+
+	// Start button pressed?
+	if (control.pad1.pressed & CONTROL_START)
+	{
+		if (!GamePause.BeginPause())
+			return
+
+		global.game.paused = true
+		global.frame_state = 0x10
+
+		GamePause.Menu()
+
+		Standalone.onResumeAfterPause()
+		global.game.paused = false
+
+	#if GAMEAPP
+		// Fix for brief glitch in Blue Spheres special stage
+		if (global.game_mode == 0x34)
+			BlueSpheres.replacePlaneRendering()
+	#endif
+	}
 }

@@ -225,8 +225,7 @@ bool Archipelago::isZoneAllowed(lemon::StringRef zone)
 
 void Archipelago::sendLocation(uint64 id)
 {
-	std::set<int64_t> checkedLocs = mClient->get_checked_locations();
-	if (checkedLocs.find(id) != checkedLocs.end())
+	if (this->isLocationChecked(id))
 	{
 		return;
 	}
@@ -236,8 +235,33 @@ void Archipelago::sendLocation(uint64 id)
 	mClient->LocationChecks(idList);
 }
 
+bool Archipelago::isLocationChecked(uint64 id)
+{
+	if (!mClient)
+		return false;
+
+	std::set<int64_t> checkedLocs = mClient->get_checked_locations();
+	return checkedLocs.find(id) != checkedLocs.end();
+}
+
+bool Archipelago::isLocationAllowedForChar(uint64 id, uint8 character)
+{
+	if (!mClient)
+		return true;
+
+	auto& root = mSlotData["LocationCharWhitelists"];
+	if (!root.contains(std::to_string(id)))
+		return true;
+		
+	auto chars = root[std::to_string(id)].get<std::vector<uint8>>();
+	return std::find(chars.begin(), chars.end(), character) != chars.end();
+}
+
 int Archipelago::getItem(lemon::StringRef name) 
 {
+	if (!mClient)
+		return 0;
+
 	int count = 0;
 	for (const auto& [index, item]: mItems) {
         if (mClient->get_item_name(item.item, GAME_NAME) == name.getString()) {
@@ -255,5 +279,8 @@ lemon::StringRef Archipelago::getSeedName()
 
 void Archipelago::triggerGoal()
 {
+	if (!mClient)
+		return;
+
 	mClient->StatusUpdate(APClient::ClientStatus::GOAL);
 }

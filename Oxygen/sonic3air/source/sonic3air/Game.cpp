@@ -267,6 +267,14 @@ void Game::registerScriptBindings(lemon::Module& module)
 		builder.addNativeFunction("Archipelago.isZoneAllowed",
 			lemon::wrap(mArchipelago, &Archipelago::isZoneAllowed), defaultFlags)
 		.setParameters("zone");
+		
+		builder.addNativeFunction("Archipelago.isLocationChecked",
+			lemon::wrap(mArchipelago, &Archipelago::isLocationChecked), defaultFlags)
+		.setParameters("id");
+		
+		builder.addNativeFunction("Archipelago.isLocationAllowedForChar",
+			lemon::wrap(mArchipelago, &Archipelago::isLocationAllowedForChar), defaultFlags)
+		.setParameters("id", "character");
 
 		builder.addNativeFunction("Archipelago.triggerGoal",
 			lemon::wrap(mArchipelago, &Archipelago::triggerGoal), defaultFlags);

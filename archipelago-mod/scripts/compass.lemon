@@ -1,0 +1,99 @@
+function bool IsLocationInLogic(u32 id)
+{
+	if (!Archipelago.isLocationAllowedForChar(id, global.characters))
+	{
+		return false
+	}
+	
+	return true
+}
+
+function void ResetGiantRingIDs()
+{
+	for (u8 i = 0; i < GiantRingIDs.length(); i++)
+	{
+		GiantRingIDs[i] = 0
+	}
+}
+
+function void LevelObjectTableBuilder.buildObjects()
+{
+	ResetGiantRingIDs()
+	base.LevelObjectTableBuilder.buildObjects()
+}
+
+function void LevelObjectTableBuilder.addObject(u16 px, u16 py, u8 type, u8 subtype, u8 flags)
+{
+	if (type == 0x85)
+	{
+		u32 id = Archipelago.getObjectId_xyPos(px, py)
+		if (!Archipelago.isLocationChecked(id))
+		{
+			// Giant ring spawned
+			for (u8 i = 0; i < GiantRingIDs.length(); i++)
+			{
+				if (GiantRingIDs[i] == 0)
+				{
+					GiantRingIDs[i] = id
+					break
+				}
+			}
+		}
+	}
+	
+	base.LevelObjectTableBuilder.addObject(px, py, type, subtype, flags)
+}
+
+//# address-hook(0x00db44) end(0x00dbb2)
+function void RenderHUD()
+{
+	base.RenderHUD()
+	if (option.ap.checkCompass)
+	{
+		RenderCompass()
+	}
+}
+
+function void RenderCompass()
+{
+	u16 charX = u16[0xffffb000 + 0x10]
+	u16 charY = u16[0xffffb000 + 0x14]
+	s16 closestX = 0
+	s16 closestY = 0
+	double closestDistance = 0
+	bool found = false
+	for (u8 i = 0; i < GiantRingIDs.length(); i++)
+	{
+		if (GiantRingIDs[i] == 0)
+			continue
+			
+		if (!IsLocationInLogic(GiantRingIDs[i]))
+			continue
+		
+		u16 px = GiantRingIDs[i] >> 16
+		u16 py = GiantRingIDs[i] & 0xFFFF
+		double dx = double(charX) - double(px)
+		double dy = double(charY) - double(py)
+		double distance = Math.sqrt(dx * dx + dy * dy)
+		if (!found || distance < closestDistance)
+		{
+			found = true
+			closestDistance = distance
+			closestX = px
+			closestY = py
+		}
+	}
+	
+	if (found)
+	{
+		s16 dx = closestX - charX
+		s16 dy = closestY - charY
+		u8 angle = Math.u8FromDegrees(Math.radiansToDegrees(Math.atan2(dx, dy)))
+		//System.writeDisplayLine(stringformat("Distance: %d, Angle: %d", distance, angle))
+		Renderer.drawSprite("arrow", getScreenWidth()/2, (getScreenHeight()/2)+80, 0, SPRITE_FLAG_PRIO, 0xf005, -angle+64, 150)
+		if (option.ap.checkCompass != 2)
+		{
+			Renderer.drawText(GamePause.DIALOG_FONT, getScreenWidth()/2, (getScreenHeight()/2)+100, stringformat("%d", closestDistance), 0xffffffff, 5, 0, 0xf006, false)
+		}
+	}
+}

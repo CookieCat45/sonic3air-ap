@@ -1,6 +1,50 @@
-function u64 Archipelago.getObjectId_xPos()
+function u32 Archipelago.getObjectId_xyPos(u16 x, u16 y)
 {
-	return Archipelago.getZoneActIdOffset(global.zone, global.act.apparent) + (objA0.position.x/100)
+	u32 id = u32((x << 16) | y)
+	if (id == 599787584 && global.zone == 0x06)
+	{
+		// Fix a conflict with a giant ring ID in LBZ and MHZ
+		id = 599787585
+	}
+	
+	return id
+}
+
+function bool Archipelago.IsKnucklesGoalNecessary()
+{
+	u8 mode = Archipelago.getDataInt("KnucklesStoryMode")
+	return mode != KnucklesStoryMode.NORMAL && mode != KnucklesStoryMode.REMOVED
+}
+
+function bool Archipelago.IsKnucklesExclusive()
+{
+	u8 mode = Archipelago.getDataInt("KnucklesStoryMode")
+	return mode == KnucklesStoryMode.EXCLUSIVE || mode == KnucklesStoryMode.EXCLUSIVE_TAILS
+}
+
+function void Archipelago.UpdateEmeraldCount()
+{
+	u8 emeraldCount = Archipelago.getItem("Chaos Emerald")
+	global.chaos_emeralds = 0
+	global.super_emeralds = 0
+	zeroMemory(0xffffffb2, 7)
+	for (u8 i = 1; i <= emeraldCount; i++)
+	{
+		if (global.chaos_emeralds < 7)
+		{
+			u8[0xffffffb2+global.chaos_emeralds] = 1
+			global.chaos_emeralds++
+		}
+		else if (global.super_emeralds < 7)
+		{
+			u8[0xffffffb2+global.super_emeralds] = 3
+			global.super_emeralds++
+		}
+		else
+		{
+			break
+		}
+	}
 }
 
 function void Archipelago.ApplySpeedUp()
@@ -33,50 +77,6 @@ function void Archipelago.ApplyInvincibility()
 		u32[0xffffcd7c] = addressof(Invincibility.Init)	// Invincibility stars
 		u16[0xffffcd7c + 0x42] = 0xffffb000
 	}
-}
-
-// Note that this is based on levelselect.characters
-function bool Archipelago.IsCharUnlocked(u8 char)
-{
-	u16 sonic = Archipelago.getItem("Sonic")
-	u16 tails = Archipelago.getItem("Tails")
-	u16 knuckles = Archipelago.getItem("Knuckles")
-	u8 knucklesMode = Archipelago.getDataInt("KnucklesStoryMode")
-	if (knucklesMode == KnucklesStoryMode.EXCLUSIVE)
-	{
-		return char == 3
-	}
-	else if (knucklesMode == KnucklesStoryMode.EXCLUSIVE_TAILS)
-	{
-		return char == 3 || char == 4 && tails
-	}
-	else if (knucklesMode == KnucklesStoryMode.REMOVED && (char == 3 || char == 4))
-	{
-		return false
-	}
-	
-	if (char == 0) // Sonic & Tails
-	{
-		return sonic && tails
-	}
-	else if (char == 1) // Sonic Alone
-	{
-		return sonic
-	}
-	else if (char == 2) // Tails Alone
-	{
-		return tails
-	}
-	else if (char == 3) // Knuckles Alone
-	{
-		return knuckles
-	}
-	else if (char == 4) // Knuckles & Tails
-	{
-		return knuckles && tails
-	}
-	
-	return false
 }
 
 function void Archipelago.CheckGoalCompletion()
@@ -148,19 +148,46 @@ function void Archipelago.CheckGoalCompletion()
 	}
 }
 
-function bool Archipelago.IsKnucklesGoalNecessary()
+// Note that this is based on levelselect.characters
+function bool Archipelago.IsCharUnlocked(u8 char)
 {
-	u8 mode = Archipelago.getDataInt("KnucklesStoryMode")
-	return mode != KnucklesStoryMode.NORMAL && mode != KnucklesStoryMode.REMOVED
-}
-
-function bool Archipelago.IsKnucklesExclusive()
-{
-	u8 mode = Archipelago.getDataInt("KnucklesStoryMode")
-	return mode == KnucklesStoryMode.EXCLUSIVE || mode == KnucklesStoryMode.EXCLUSIVE_TAILS
-}
-
-function bool IsPlayingKnuckles()
-{
-	return global.characters == 3 || global.characters == 4
+	u16 sonic = Archipelago.getItem("Sonic")
+	u16 tails = Archipelago.getItem("Tails")
+	u16 knuckles = Archipelago.getItem("Knuckles")
+	u8 knucklesMode = Archipelago.getDataInt("KnucklesStoryMode")
+	if (knucklesMode == KnucklesStoryMode.EXCLUSIVE)
+	{
+		return char == 3
+	}
+	else if (knucklesMode == KnucklesStoryMode.EXCLUSIVE_TAILS)
+	{
+		return char == 3 || char == 4 && tails
+	}
+	else if (knucklesMode == KnucklesStoryMode.REMOVED && (char == 3 || char == 4))
+	{
+		return false
+	}
+	
+	if (char == 0) // Sonic & Tails
+	{
+		return sonic && tails
+	}
+	else if (char == 1) // Sonic Alone
+	{
+		return sonic
+	}
+	else if (char == 2) // Tails Alone
+	{
+		return tails
+	}
+	else if (char == 3) // Knuckles Alone
+	{
+		return knuckles
+	}
+	else if (char == 4) // Knuckles & Tails
+	{
+		return knuckles && tails
+	}
+	
+	return false
 }

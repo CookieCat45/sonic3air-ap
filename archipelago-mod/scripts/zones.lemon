@@ -15,7 +15,7 @@ function u8 Archipelago.GetZoneActsCompleted(u8 zone, bool knuckles)
 		knuckles = false
 	}
 	
-	u32 addr = knuckles ? Addr.ZoneProgressStart.Knuckles + zone : Addr.ZoneProgressStart + zone
+	u32 addr = knuckles ? Addr.ZoneProgressStart.Knuckles + u32(zone) : Addr.ZoneProgressStart + u32(zone)
 	string seed = Archipelago.getSeedName()
 	System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%d_%s", zone, knuckles, seed), false)
 	u8 count = 0
@@ -57,8 +57,13 @@ function bool Archipelago.AreAllZonesComplete(bool includeDeathEgg, bool include
 		if (!includeDoomsday && name == "Doomsday Zone")
 			continue
 			
-		if (knuckles && name == "Sky Sanctuary Zone") // Ignore Sky Sanctuary for Knuckles
-			continue
+		if (knuckles && name == "Sky Sanctuary Zone")
+		{
+			if (Archipelago.getDataInt("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
+			{
+				continue
+			}
+		}
 		
 		if (!Archipelago.isZoneAllowed(name))
 			continue
@@ -71,13 +76,12 @@ function bool Archipelago.AreAllZonesComplete(bool includeDeathEgg, bool include
 	}
 
 	u8 totalZones = Archipelago.getDataInt("ZoneCount")
-	if (knuckles && Archipelago.IsKnucklesGoalNecessary() && Archipelago.getDataInt("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
+	if (knuckles && Archipelago.getDataInt("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
 	{
-		totalZones--
 		totalZones--
 	}
 	
-	if (!includeDeathEgg)
+	if (!includeDeathEgg && Archipelago.isZoneAllowed("Death Egg Zone"))
 	{
 		totalZones--
 	}
@@ -97,7 +101,7 @@ function bool Archipelago.IsZoneActComplete(u8 zone, u8 act, bool knuckles)
 		knuckles = false
 	}
 	
-	u32 addr = knuckles ? Addr.ZoneProgressStart.Knuckles + zone : Addr.ZoneProgressStart + zone
+	u32 addr = knuckles ? Addr.ZoneProgressStart.Knuckles + u32(zone) : Addr.ZoneProgressStart + u32(zone)
 	string seed = Archipelago.getSeedName()
 	System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%d_%s", zone, knuckles, seed), false)
 	return (u8[addr] & (1 << act)) != 0

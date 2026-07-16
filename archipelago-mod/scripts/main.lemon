@@ -5,13 +5,14 @@ include tweaks
 include specialstages
 include helpers
 include zones
+include compass
 include actselect_ap
 
 constant u32 Addr.LastItemIndex = 0x880100
 constant u32 Addr.ZoneProgressStart = 0x880150
 constant u32 Addr.ZoneProgressStart.Knuckles = 0x880250
 
-// Option values
+// Option values (from the apworld)
 constant u8 Goal.ALLZONES = 0
 constant u8 Goal.DOOMSDAY = 1 
 constant u8 Goal.DOOMSDAY_HYPER = 2
@@ -29,10 +30,16 @@ constant u8 KnucklesStoryMode.REMOVED = 2
 constant u8 KnucklesStoryMode.EXCLUSIVE = 3
 constant u8 KnucklesStoryMode.EXCLUSIVE_TAILS = 4
 
+// Mod options
+global u8 option.ap.checkCompass
+
+// Other variables
+global u32 GiantRingIDs[16]
+
 function void Init()
 {
 	base.Init()
-	//debug_mode.enabled = 1
+	ResetGiantRingIDs()
 }
 
 function void Archipelago.OnConnected()
@@ -54,12 +61,11 @@ function void Game.onZoneActCompleted(u16 zoneAndAct)
 	
 	u8 zone = zoneAndAct >> 8
 	u8 act = zoneAndAct & 0xFF
-	u32 addr = Addr.ZoneProgressStart + zone
-	bool knuckles = IsPlayingKnuckles() && Archipelago.IsKnucklesGoalNecessary()
+	u32 addr = Addr.ZoneProgressStart + u32(zone)
+	bool knuckles = isMainCharacter(CHARACTER_KNUCKLES) && Archipelago.IsKnucklesGoalNecessary()
 	if (knuckles)
 	{
-		LogDec = "Playing as Knuckles"
-		addr = Addr.ZoneProgressStart.Knuckles + zone
+		addr = Addr.ZoneProgressStart.Knuckles + u32(zone)
 	}
 	
 	// Fix some oddities with zone/act IDs
@@ -157,43 +163,16 @@ function void Archipelago.OnReceivedItems(s32 highestIndex, bool progression)
 		System.savePersistentData(Addr.LastItemIndex, 4, "s3air_archipelago", stringformat("LastItemIndex_%s", seed), false)
 		if (progression)
 		{
-			playSound(0x68)
+			playSound(0xb0)
 		}
 	}
 	
-	UpdateEmeraldCount()
-}
-
-function void UpdateEmeraldCount()
-{
-	u8 emeraldCount = Archipelago.getItem("Chaos Emerald")
-	global.chaos_emeralds = 0
-	global.super_emeralds = 0
-	zeroMemory(0xffffffb2, 7)
-	for (u8 i = 1; i <= emeraldCount; i++)
-	{
-		if (global.chaos_emeralds < 7)
-		{
-			u8[0xffffffb2+global.chaos_emeralds] = 1
-			global.chaos_emeralds++
-		}
-		else if (global.super_emeralds < 7)
-		{
-			u8[0xffffffb2+global.super_emeralds] = 3
-			global.super_emeralds++
-		}
-		else
-		{
-			break
-		}
-	}
-	
-	//LogDec = stringformat("Emeralds: %d | %d", global.chaos_emeralds, global.super_emeralds)
+	Archipelago.UpdateEmeraldCount()
 }
 
 global u8 UpdateDelay = 10
 global bool EmeraldsUpdated = false
-function void OnCharacterUpdate()
+function void OnCharacterUpdate(u8 charId)
 {
 	if (global.rolling_demo || Game.isTimeAttack())
 	{
@@ -202,7 +181,7 @@ function void OnCharacterUpdate()
 	
 	if (!EmeraldsUpdated)
 	{
-		UpdateEmeraldCount()
+		Archipelago.UpdateEmeraldCount()
 		EmeraldsUpdated = true
 	}
 	
@@ -283,21 +262,21 @@ function void OnCharacterUpdate()
 function void Character.BaseUpdate.Sonic()
 {
 	base.Character.BaseUpdate.Sonic()
-	OnCharacterUpdate()
+	OnCharacterUpdate(CHARACTER_SONIC)
 }
 
 //# address-hook(0x01365c) end(0x0136b8)
 function void Character.BaseUpdate.Tails()
 {
 	base.Character.BaseUpdate.Tails()
-	OnCharacterUpdate()
+	OnCharacterUpdate(CHARACTER_TAILS)
 }
 
 //# address-hook(0x016444) end(0x016498)
 function void Character.BaseUpdate.Knuckles()
 {
 	base.Character.BaseUpdate.Knuckles()
-	OnCharacterUpdate()
+	OnCharacterUpdate(CHARACTER_KNUCKLES)
 }
 
 #endif

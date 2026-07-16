@@ -29,6 +29,8 @@ public:
 	void triggerGoal();
 	int64 getDataInt(lemon::StringRef name);
 	bool isZoneAllowed(lemon::StringRef zone);
+	bool isLocationChecked(uint64 id);
+	bool isLocationAllowedForChar(uint64 id, uint8 character);
 	lemon::StringRef getSeedName();
 
 private:

@@ -103,7 +103,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 		}
 	}
 	
-	while (!Archipelago.isZoneAllowed(ActSelect.GetZoneName(selectedZone)))
+	while (!Archipelago.isZoneAllowed(ActSelect.GetZoneName(selectedZone)) || !Archipelago.IsZoneUnlocked(ActSelect.GetZoneName(selectedZone), levelselect.characters >= 3) && selectedZone != 14)
 	{
 		selectedZone++
 	}
@@ -250,10 +250,14 @@ function void ActSelect.Menu(u8 fadeInMethod)
 			{
 				if (optionChange == 1 && selectedZone == 14)
 				{
-					selectedZone = 0
+					selectedZone = -1
+				}
+				else if (optionChange == -1 && selectedZone == 0)
+				{
+					selectedZone = ActSelect.GetNumZones()
 				}
 				
-				bool wrapped = (optionChange == 1 && selectedZone == 0 && !linear)
+				bool wrapped = (!linear && (optionChange == 1 && selectedZone == -1 || optionChange == -1 && selectedZone == ActSelect.GetNumZones()))
 				if (!wrapped)
 				{
 					selectedZone = clamp(s16(selectedZone) + optionChange, 0, ActSelect.GetNumZones() - 1)
@@ -261,7 +265,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 				
 				while (!Archipelago.isZoneAllowed(ActSelect.GetZoneName(selectedZone)))
 				{
-					optionChange == 1 ? selectedZone++ : selectedZone--
+					selectedZone += optionChange
 				}
 				
 				selectedAct = clamp(selectedAct, 0, ActSelect.GetNumActs(selectedZone) - 1)
@@ -298,7 +302,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 				{
 					while (!Archipelago.isZoneAllowed(ActSelect.GetZoneName(selectedZone)))
 					{
-						optionChange == 1 ? selectedZone++ : selectedZone--
+						selectedZone += optionChange
 					}
 				}
 			}
@@ -394,6 +398,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 			global.game_mode = 0x34
 			global.in_extra_stage = 1
 			global.stage_type = 1
+			global.characters = levelselect.characters
 			Audio.playAudio(0xaf)
 			SpecialStage()
 		}
@@ -431,7 +436,7 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 	bool charUnlocked = Archipelago.IsCharUnlocked(levelselect.characters)
 	u32 completeColor = 0x36d150ff
 	u32 lockedColor = 0x474747ff
-	bool complete
+	bool complete = false
 	
 	// Title text
 	Renderer.drawText(ActSelect.TITLE_FONT, anchorX, 12, "ACT SELECT", 0xffffffff, 5, 0, 0xf010, false, true)
@@ -457,7 +462,7 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 		if (entryIndex == 0)
 		{
 			text = ActSelect.GetZoneName(selectedZone)
-			canGoLeft = (selectedZone > 0)
+			canGoLeft = (selectedZone >= 0)
 			canGoRight = (selectedZone < ActSelect.GetNumZones() - 1)
 			if (selectedZone != 14)
 			{
