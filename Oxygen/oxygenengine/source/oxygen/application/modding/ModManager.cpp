@@ -35,7 +35,7 @@ void ModManager::startup()
 	{
 		Json::Value json = JsonHelper::loadFile(mBasePath + L"active-mods.json");
 
-		Json::Value activeMods = json["ActiveMods"];
+		Json::Value activeMods = json["ActiveModsAP"];
 		const int numMods = activeMods.isArray() ? (int)activeMods.size() : 0;
 		for (int i = 0; i < numMods; ++i)
 		{
@@ -92,7 +92,7 @@ void ModManager::saveActiveMods()
 		{
 			modNames.append(WString(mod->mLocalDirectory).toStdString());
 		}
-		root["ActiveMods"] = modNames;
+		root["ActiveModsAP"] = modNames;
 		root["UseLegacyLoading"] = false;
 	}
 

@@ -60,7 +60,7 @@ void Archipelago::setupHandlers()
 		bool containsSelf;
 		for (const auto& node: msg) {
 			if (node.type == "player_id") {
-				if (mClient->slot_concerns_self(std::stoi(node.text))) {
+				if (mClient->get_player_number() == std::stoi(node.text)) {
 					containsSelf = true;
 					break;
 				}
@@ -108,6 +108,37 @@ void Archipelago::setupHandlers()
 		execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::INT_32, highestIndex);
 		execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::BOOL, hasProg);
 		codeExec.executeScriptFunction("Archipelago.OnReceivedItems", false, &execData);
+	});
+	mClient->set_bounced_handler([this](const json &data){ 
+		if (!data.contains("tags"))
+			return;
+			
+		auto &tags = data["tags"];
+		if ((std::find(tags.begin(), tags.end(), "DeathLink") != tags.end()))
+		{
+			auto &deathData = data["data"];
+			CodeExec::FunctionExecData execData;
+			execData.mParams.mReturnType = &lemon::PredefinedDataTypes::VOID;
+			float time = 0.0;
+			std::string cause = "";
+			std::string source = "";
+			if (data.contains("time")){
+				time = data["time"];
+			}
+			if (data.contains("cause")){
+				cause = data["cause"];
+			}
+			if (data.contains("source")){
+				source = data["source"];
+			}
+			
+			CodeExec& codeExec = Application::instance().getSimulation().getCodeExec();
+			LemonScriptRuntime& runtime = codeExec.getLemonScriptRuntime();
+			execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::FLOAT, time);
+			execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::STRING, runtime.getInternalLemonRuntime().addString(cause));
+			execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::STRING, runtime.getInternalLemonRuntime().addString(source));
+			codeExec.executeScriptFunction("Archipelago.OnDeathLink", false, &execData);
+		}
 	});
 }
 
@@ -214,6 +245,21 @@ int64 Archipelago::getDataInt(lemon::StringRef name)
 	return int64(mSlotData.value(name.getString(), 0));
 }
 
+void Archipelago::setDataFloat(lemon::StringRef name, float data)
+{
+	mSlotData[name.getString()] = data;
+}
+
+float Archipelago::getDataFloat(lemon::StringRef name)
+{
+	if (mSlotData.is_null() || !mSlotData.contains(name.getString()) || mSlotData[name.getString()].is_null())
+	{
+		return 0.0;
+	}
+
+	return float(mSlotData.value(name.getString(), 0.0));
+}
+
 bool Archipelago::isZoneAllowed(lemon::StringRef zone)
 {
 	if (mSlotData.is_null() || !mSlotData.contains("ZonesAllowed"))
@@ -225,7 +271,7 @@ bool Archipelago::isZoneAllowed(lemon::StringRef zone)
 
 void Archipelago::sendLocation(uint64 id)
 {
-	if (this->isLocationChecked(id))
+	if (!mClient || this->isLocationChecked(id))
 	{
 		return;
 	}
@@ -274,7 +320,13 @@ int Archipelago::getItem(lemon::StringRef name)
 
 lemon::StringRef Archipelago::getSeedName()
 {
-	return lemon::StringRef(lemon::Runtime::getActiveRuntime()->addString(std::string_view(mClient->get_seed())));
+	std::string_view seed = "";
+	if (mClient)
+	{
+		seed = std::string_view(mClient->get_seed());
+	}
+	
+	return lemon::StringRef(lemon::Runtime::getActiveRuntime()->addString(seed));
 }
 
 void Archipelago::triggerGoal()
@@ -283,4 +335,17 @@ void Archipelago::triggerGoal()
 		return;
 
 	mClient->StatusUpdate(APClient::ClientStatus::GOAL);
+}
+
+void Archipelago::sendDeath()
+{
+	if (!mClient || !mSlotData["DeathLink"])
+		return;
+
+	float time = now();
+	mSlotData["LastDeathTime"] = time;
+	json data;
+	data["time"] = time;
+	data["source"] = mClient->get_player_alias(mClient->get_player_number());
+	mClient->Bounce(data, {}, {}, {"DeathLink"});
 }

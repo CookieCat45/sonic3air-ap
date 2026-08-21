@@ -26,8 +26,11 @@ public:
 	int getItem(lemon::StringRef name);
 	void callScriptFunction(lemon::FlyweightString functionName);
 	void setDataInt(lemon::StringRef name, int64 data);
+	void setDataFloat(lemon::StringRef name, float data);
 	void triggerGoal();
+	void sendDeath();
 	int64 getDataInt(lemon::StringRef name);
+	float getDataFloat(lemon::StringRef name);
 	bool isZoneAllowed(lemon::StringRef zone);
 	bool isLocationChecked(uint64 id);
 	bool isLocationAllowedForChar(uint64 id, uint8 character);
@@ -35,6 +38,7 @@ public:
 
 private:
 	bool mConnecting = false;
+	bool mDeathLink = false;
 	unsigned long mLastConnect = 0;
 	std::map<int, APClient::NetworkItem> mItems;
 	std::map<lemon::StringRef, lemon::StringRef> mGlobalStrings;
@@ -59,5 +63,5 @@ private:
     }
 
 public:
-	std::unique_ptr<APClient> mClient;
+	std::unique_ptr<APClient> mClient = nullptr;
 };

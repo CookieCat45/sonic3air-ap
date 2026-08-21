@@ -261,6 +261,14 @@ void Game::registerScriptBindings(lemon::Module& module)
 			lemon::wrap(mArchipelago, &Archipelago::getDataInt), defaultFlags)
 		.setParameters("name");
 		
+		builder.addNativeFunction("Archipelago.setDataFloat",
+			lemon::wrap(mArchipelago, &Archipelago::setDataFloat), defaultFlags)
+		.setParameters("name", "value");
+		
+		builder.addNativeFunction("Archipelago.getDataFloat",
+			lemon::wrap(mArchipelago, &Archipelago::getDataFloat), defaultFlags)
+		.setParameters("name");
+		
 		builder.addNativeFunction("Archipelago.getSeedName",
 			lemon::wrap(mArchipelago, &Archipelago::getSeedName), defaultFlags);
 			
@@ -278,6 +286,9 @@ void Game::registerScriptBindings(lemon::Module& module)
 
 		builder.addNativeFunction("Archipelago.triggerGoal",
 			lemon::wrap(mArchipelago, &Archipelago::triggerGoal), defaultFlags);
+			
+		builder.addNativeFunction("Archipelago.sendDeath",
+			lemon::wrap(mArchipelago, &Archipelago::sendDeath), defaultFlags);
 	}
 	
 	// Audio
