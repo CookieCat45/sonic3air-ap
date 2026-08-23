@@ -1,4 +1,6 @@
-#include "Archipelago.h"
+#include "oxygen/pch.h"
+
+#include "oxygen/network/archipelago/APCpp/Archipelago.h"
 #include <rmxbase.h>
 #include <random>
 #include <set>

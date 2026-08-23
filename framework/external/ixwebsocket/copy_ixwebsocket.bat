@@ -13,12 +13,12 @@ if not exist %OutputDir%\lib\x64d\ixwebsocket         mkdir %OutputDir%\lib\x64d
 
 echo.
 echo Copying includes...
-copy %InputDir%\ixwebsocket\*.h %OutputDir%\include\ixwebsocket
+copy %InputDir%\ixwebsocket\ixwebsocket\*.h %OutputDir%\include\ixwebsocket
 
 echo.
 echo Copying LIBs...
-copy %InputDir%\ixwebsocket\build\Debug\ixwebsocket.lib %OutputDir%\lib\x86d\ixwebsocket
-copy %InputDir%\ixwebsocket\build\Release\ixwebsocket.lib %OutputDir%\lib\x86\ixwebsocket
+copy %InputDir%\ixwebsocket\buildWin32\Debug\ixwebsocket.lib %OutputDir%\lib\x86d\ixwebsocket
+copy %InputDir%\ixwebsocket\buildWin32\Release\ixwebsocket.lib %OutputDir%\lib\x86\ixwebsocket
 copy %InputDir%\ixwebsocket\build\Debug\ixwebsocket.lib %OutputDir%\lib\x64d\ixwebsocket
 copy %InputDir%\ixwebsocket\build\Release\ixwebsocket.lib %OutputDir%\lib\x64\ixwebsocket
 

@@ -1,4 +1,6 @@
-#include "Archipelago.h"
+#include "oxygen/pch.h"
+
+#include "oxygen/network/archipelago/APCpp/Archipelago.h"
 
 #include "ixwebsocket/IXNetSystem.h"
 #include "ixwebsocket/IXWebSocket.h"
@@ -11,7 +13,6 @@
 #include <queue>
 #include <random>
 #include <fstream>
-#include <rmxbase.h>
 #include <deque>
 #include <set>
 #include <string>

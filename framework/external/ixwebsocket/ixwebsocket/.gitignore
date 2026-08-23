@@ -1,4 +1,5 @@
 build
+buildWin32
 *.pyc
 venv
 ixsnake/ixsnake/.certs/
