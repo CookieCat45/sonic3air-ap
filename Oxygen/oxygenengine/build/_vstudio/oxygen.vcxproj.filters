@@ -133,6 +133,12 @@
     <Filter Include="network\crowdcontrol">
       <UniqueIdentifier>{f8ee760c-f271-4644-8491-37009fb50cb1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="network\archipelago">
+      <UniqueIdentifier>{39e84f60-f760-4611-b872-dca3bef4cdaa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="network\archipelago\APCpp">
+      <UniqueIdentifier>{7fb7a7c1-7213-4076-88c4-fc8cb94e84ac}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\oxygen\helper\BitStream.cpp">
@@ -669,6 +675,15 @@
     </ClCompile>
     <ClCompile Include="..\..\source\oxygen\network\crowdcontrol\CrowdControlClient.cpp">
       <Filter>network\crowdcontrol</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\oxygen\network\archipelago\APCpp\Archipelago.cpp">
+      <Filter>network\archipelago\APCpp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\oxygen\network\archipelago\APCpp\Archipelago_DataStorageSim.cpp">
+      <Filter>network\archipelago\APCpp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\oxygen\network\archipelago\APCpp\Archipelago_Gifting.cpp">
+      <Filter>network\archipelago\APCpp</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1260,6 +1275,9 @@
     </ClInclude>
     <ClInclude Include="..\..\source\oxygen\network\crowdcontrol\CrowdControlClient.h">
       <Filter>network\crowdcontrol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\oxygen\network\archipelago\APCpp\Archipelago.h">
+      <Filter>network\archipelago\APCpp</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

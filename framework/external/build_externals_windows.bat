@@ -20,5 +20,9 @@ pushd imgui
 call build_imgui.bat no_pause
 popd
 
+pushd ixwebsocket
+call build_ixwebsocket.bat no_pause
+popd
+
 :: Done
 pause
