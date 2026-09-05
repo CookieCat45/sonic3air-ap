@@ -55,9 +55,6 @@
     <Filter Include="drawing\software">
       <UniqueIdentifier>{4f74a5ca-d4eb-4c32-9534-db0a341b1e99}</UniqueIdentifier>
     </Filter>
-    <Filter Include="application\modding">
-      <UniqueIdentifier>{e9bf568d-17dd-45d5-bf97-8ea49867a253}</UniqueIdentifier>
-    </Filter>
     <Filter Include="file">
       <UniqueIdentifier>{7114b4f1-cc30-4e6e-8ce0-01e658297cd1}</UniqueIdentifier>
     </Filter>
@@ -138,6 +135,21 @@
     </Filter>
     <Filter Include="network\archipelago\APCpp">
       <UniqueIdentifier>{7fb7a7c1-7213-4076-88c4-fc8cb94e84ac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine">
+      <UniqueIdentifier>{a8dfc540-69f3-4be9-b664-6c5683202b06}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\modding">
+      <UniqueIdentifier>{e9bf568d-17dd-45d5-bf97-8ea49867a253}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="extensions">
+      <UniqueIdentifier>{0a0821f3-fa4f-45ca-9306-4141ae3b0058}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="extensions\test">
+      <UniqueIdentifier>{ca3c2263-72d1-44fb-bbd4-c8994837c774}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="extensions\jsonreader">
+      <UniqueIdentifier>{2b4630e4-df28-4b66-a803-4968a82ded91}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -249,9 +261,6 @@
     <ClCompile Include="..\..\source\oxygen\simulation\sound\ym2612.cpp">
       <Filter>simulation\sound</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\oxygen\application\EngineMain.cpp">
-      <Filter>application</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\source\oxygen\simulation\GameRecorder.cpp">
       <Filter>simulation</Filter>
     </ClCompile>
@@ -318,12 +327,6 @@
     </ClCompile>
     <ClCompile Include="..\..\source\oxygen\helper\HighResolutionTimer.cpp">
       <Filter>helper</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\oxygen\application\modding\Mod.cpp">
-      <Filter>application\modding</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\oxygen\application\modding\ModManager.cpp">
-      <Filter>application\modding</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\oxygen\application\audio\AudioSourceManager.cpp">
       <Filter>application\audio</Filter>
@@ -685,6 +688,24 @@
     <ClCompile Include="..\..\source\oxygen\network\archipelago\APCpp\Archipelago_Gifting.cpp">
       <Filter>network\archipelago\APCpp</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\oxygen\engine\EngineMain.cpp">
+      <Filter>engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\oxygen\engine\modding\Mod.cpp">
+      <Filter>engine\modding</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\oxygen\engine\modding\ModManager.cpp">
+      <Filter>engine\modding</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\oxygen\extensions\test\TestExtension.cpp">
+      <Filter>extensions\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\oxygen\extensions\jsonreader\JsonReader.cpp">
+      <Filter>extensions\jsonreader</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\oxygen\extensions\jsonreader\JsonReaderWrapper.cpp">
+      <Filter>extensions\jsonreader</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\oxygen\helper\BitStream.h">
@@ -801,9 +822,6 @@
     <ClInclude Include="..\..\source\oxygen\simulation\sound\ym2612.h">
       <Filter>simulation\sound</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\source\oxygen\application\EngineMain.h">
-      <Filter>application</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\source\oxygen\simulation\DebuggingInterfaces.h">
       <Filter>simulation</Filter>
     </ClInclude>
@@ -876,12 +894,6 @@
     </ClInclude>
     <ClInclude Include="..\..\source\oxygen\helper\HighResolutionTimer.h">
       <Filter>helper</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\oxygen\application\modding\Mod.h">
-      <Filter>application\modding</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\oxygen\application\modding\ModManager.h">
-      <Filter>application\modding</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\oxygen\application\audio\AudioSourceManager.h">
       <Filter>application\audio</Filter>
@@ -1278,6 +1290,30 @@
     </ClInclude>
     <ClInclude Include="..\..\source\oxygen\network\archipelago\APCpp\Archipelago.h">
       <Filter>network\archipelago\APCpp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\oxygen\engine\EngineMain.h">
+      <Filter>engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\oxygen\engine\modding\Mod.h">
+      <Filter>engine\modding</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\oxygen\engine\modding\ModManager.h">
+      <Filter>engine\modding</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\oxygen\engine\EngineSystems.h">
+      <Filter>engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\oxygen\engine\EngineDelegateInterface.h">
+      <Filter>engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\oxygen\extensions\test\TestExtension.h">
+      <Filter>extensions\test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\oxygen\extensions\jsonreader\JsonReader.h">
+      <Filter>extensions\jsonreader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\oxygen\extensions\jsonreader\JsonReaderWrapper.h">
+      <Filter>extensions\jsonreader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

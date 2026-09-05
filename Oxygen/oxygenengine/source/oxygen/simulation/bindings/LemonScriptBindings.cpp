@@ -19,14 +19,16 @@
 #include "oxygen/simulation/SimulationState.h"
 #include "oxygen/simulation/analyse/ROMDataAnalyser.h"
 #include "oxygen/application/Application.h"
-#include "oxygen/application/EngineMain.h"
 #include "oxygen/application/input/ControlsIn.h"
 #include "oxygen/application/input/InputManager.h"
-#include "oxygen/application/modding/ModManager.h"
 #include "oxygen/application/overlays/DebugSidePanel.h"
 #include "oxygen/application/video/VideoOut.h"
-#include "oxygen/menu/imgui/ImGuiIntegration.h"
+#include "oxygen/engine/EngineMain.h"
+#include "oxygen/engine/modding/ModManager.h"
+#include "oxygen/extensions/jsonreader/JsonReader.h"
+#include "oxygen/extensions/test/TestExtension.h"
 #include "oxygen/helper/RandomNumberGenerator.h"
+#include "oxygen/menu/imgui/ImGuiIntegration.h"
 #include "oxygen/network/crowdcontrol/CrowdControlClient.h"
 #include "oxygen/rendering/parts/RenderParts.h"
 #include "oxygen/resources/PaletteCollection.h"
@@ -1347,10 +1349,13 @@ void LemonScriptBindings::registerBindings(lemon::Module& module)
 	}
 
 	// CrowdControl
-	{
-		builder.addNativeFunction("CrowdControl.sendResponse", lemon::wrap(CrowdControlClient::instance(), &CrowdControlClient::sendResponse), defaultFlags)
-			.setParameters("id", "status", "message");
-	}
+	CrowdControlClient::instance().registerScriptBindings(builder);
+
+	// JsonReader
+	JsonReader::registerScriptBindings(builder);
+
+	// TestExtension
+	TestExtension::instance().registerScriptBindings(builder);
 
 	// Register game-specific script bindings
 	EngineMain::getDelegate().registerScriptBindings(module);
