@@ -3,7 +3,7 @@
 # Copyright (c) 2018 Machine Zone, Inc. All rights reserved.
 #
 
-cmake_minimum_required(VERSION 3.4.1...3.17.2)
+cmake_minimum_required(VERSION 3.15.0...3.17.2)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake;${CMAKE_MODULE_PATH}")
 
 project(ixwebsocket LANGUAGES C CXX VERSION 12.0.1)
@@ -219,6 +219,8 @@ if (USE_TLS)
     endif()
 endif()
 
+set_property(TARGET ixwebsocket PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 if (USE_TLS)
   if (USE_OPEN_SSL)
     message(STATUS "TLS configured to use openssl")
@@ -255,6 +257,7 @@ if (USE_TLS)
       
     endif()
     target_include_directories(ixwebsocket PUBLIC $<BUILD_INTERFACE:${MBEDTLS_INCLUDE_DIRS}>)
+    # TODO: Libraries aren't found for some reason?
     #target_link_libraries(ixwebsocket PRIVATE ${MBEDTLS_LIBRARIES})
   elseif (USE_LIBRE_SSL)
     message(STATUS "TLS configured to use libressl")
