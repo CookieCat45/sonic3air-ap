@@ -18,6 +18,7 @@
 #include "oxygen/extensions/test/TestExtension.h"
 #include "oxygen/network/EngineServerClient.h"
 #include "oxygen/network/crowdcontrol/CrowdControlClient.h"
+#include "oxygen/network/archipelago/ArchipelagoClient.h"
 #include "oxygen/platform/CommandForwarder.h"
 #include "oxygen/resources/FontCollection.h"
 #include "oxygen/resources/ResourcesCache.h"
@@ -59,6 +60,7 @@ namespace oxygen
 		DownloadManager	   mDownloadManager;
 		EngineServerClient mEngineServerClient;
 		CrowdControlClient mCrowdControlClient;
+		ArchipelagoClient mArchipelagoClient;
 		TestExtension	   mTestExtension;		// Test only
 	};
 }

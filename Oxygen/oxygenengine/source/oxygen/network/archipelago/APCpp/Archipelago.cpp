@@ -69,7 +69,7 @@ std::set<int64_t> missing_locations;
 
 // Callback function pointers
 std::function<void()> resetItemValues = nullptr;
-std::function<void(int64_t,bool)> getitemfunc = nullptr;
+std::function<void(AP_NetworkItem,bool)> getitemfunc = nullptr;
 std::function<void(int64_t)> checklocfunc = nullptr;
 std::function<void(std::vector<AP_NetworkItem>)> locinfofunc = nullptr;
 std::function<void(std::string, std::string)> recvdeath = nullptr;
@@ -119,8 +119,6 @@ void AP_Init_Generic();
 bool parse_response(std::string msg, std::string &request);
 void APSend(std::string req);
 void WriteFileJSON(Json::Value val, std::string path);
-std::string getItemName(std::string game, int64_t id);
-std::string getLocationName(std::string game, int64_t id);
 AP_NetworkPlayer getPlayer(int team, int slot);
 bool loadDataPkg(const std::string& game, const std::string& hash);
 void cacheDataPkgs(Json::Value& serverPkgs);
@@ -325,7 +323,7 @@ void AP_SendItem(std::set<int64_t> const& locations) {
         }
     }
     for (int64_t idx : missing) {
-        logfunc("AP: Checked '" + getLocationName(ap_game, idx) + "'.");
+        logfunc("AP: Checked '" + AP_GetLocationName(ap_game, idx) + "'.");
     }
     if (multiworld) {
         Json::Value req_t;
@@ -478,7 +476,7 @@ void AP_SetItemClearCallback(std::function<void()> f_itemclr) {
     resetItemValues = f_itemclr;
 }
 
-void AP_SetItemRecvCallback(std::function<void(int64_t,bool)> f_itemrecv) {
+void AP_SetItemRecvCallback(std::function<void(AP_NetworkItem,bool)> f_itemrecv) {
     getitemfunc = f_itemrecv;
 }
 
@@ -833,6 +831,8 @@ bool parse_response(std::string msg, std::string &request) {
                 AP_SetNotify("GiftBox;" + std::to_string(ap_player_team) + ";" + std::to_string(ap_player_id), AP_DataType::Raw, true);
             }
 
+            ap_slot_data = root[i]["slot_data"];
+
             if ((root[i]["slot_data"].get("death_link", false).asBool() || root[i]["slot_data"].get("DeathLink", false).asBool()) && deathlinksupported) enable_deathlink = true;
             if (root[i]["slot_data"]["death_link_amnesty"] != Json::nullValue)
                 deathlink_amnesty = root[i]["slot_data"].get("death_link_amnesty", 0).asInt();
@@ -962,8 +962,8 @@ bool parse_response(std::string msg, std::string &request) {
                     root[i]["item"]["player"].asInt(),
                     root[i]["item"]["flags"].asInt(),
                 };
-                msg->item.itemName = getItemName(recv_player.game, msg->item.item);
-                msg->item.locationName = getLocationName(recv_player.game, msg->item.location);
+                msg->item.itemName = AP_GetItemName(recv_player.game, msg->item.item);
+                msg->item.locationName = AP_GetLocationName(recv_player.game, msg->item.location);
                 msg->item.playerName = getPlayer(0, msg->item.player).name;
                 msg->recvPlayer = recv_player.alias;
                 msg->text = msg->item.itemName + std::string(" was sent to ") + msg->recvPlayer;
@@ -979,12 +979,12 @@ bool parse_response(std::string msg, std::string &request) {
                     root[i]["item"]["player"].asInt(),
                     root[i]["item"]["flags"].asInt(),
                 };
-                msg->item.itemName = getItemName(recv_player.game, msg->item.item);
-                msg->item.locationName = getLocationName(recv_player.game, msg->item.location);
+                msg->item.itemName = AP_GetItemName(recv_player.game, msg->item.item);
+                msg->item.locationName = AP_GetLocationName(recv_player.game, msg->item.location);
                 msg->item.playerName = getPlayer(0, msg->item.player).name;
                 msg->sendPlayer = send_player.alias;
                 msg->recvPlayer = recv_player.alias;
-                msg->location = getLocationName(send_player.game, root[i]["item"]["location"].asInt64());
+                msg->location = AP_GetLocationName(send_player.game, root[i]["item"]["location"].asInt64());
                 msg->checked = root[i]["found"].asBool();
                 msg->text = std::string("Item ") + msg->item.itemName + std::string(" from ") + msg->sendPlayer + std::string(" to ") + msg->recvPlayer + std::string(" at ") + msg->location + std::string((msg->checked ? " (Checked)" : " (Unchecked)"));
                 messageQueue.push_back(msg);
@@ -1033,8 +1033,8 @@ bool parse_response(std::string msg, std::string &request) {
                 AP_NetworkPlayer player = getPlayer(0, root[i]["locations"][j]["player"].asInt());
                 item.player = player.slot;
                 item.flags = root[i]["locations"][j]["flags"].asInt();
-                item.itemName = getItemName(player.game, item.item);
-                item.locationName = getLocationName(ap_game, item.location);
+                item.itemName = AP_GetItemName(player.game, item.item);
+                item.locationName = AP_GetLocationName(ap_game, item.location);
                 item.playerName = player.alias;
                 locations.push_back(item);
             }
@@ -1047,22 +1047,22 @@ bool parse_response(std::string msg, std::string &request) {
             int item_idx = root[i]["index"].asInt();
             bool notify;
             for (unsigned int j = 0; j < root[i]["items"].size(); j++) {
-                int64_t item_id = root[i]["items"][j]["item"].asInt64();
-                notify = (item_idx == 0 && last_item_idx <= j && multiworld) || item_idx != 0;
-                getitemfunc(item_id, notify);
-                if (queueitemrecvmsg && notify) {
-                    AP_ItemRecvMessage* msg = new AP_ItemRecvMessage;
-                    AP_NetworkPlayer sender = getPlayer(0, root[i]["items"][j]["player"].asInt());
-                    msg->type = AP_MessageType::ItemRecv;
-                    msg->item = AP_NetworkItem{
+                AP_NetworkItem item = AP_NetworkItem{
                         root[i]["items"][j]["item"].asInt64(),
                         root[i]["items"][j]["location"].asInt64(),
                         root[i]["items"][j]["player"].asInt(),
                         root[i]["items"][j]["flags"].asInt(),
-                    };
-                    msg->item.itemName = getItemName(ap_game, msg->item.item);
-                    msg->item.locationName = getLocationName(ap_game, msg->item.location);
-                    msg->item.playerName = getPlayer(0, msg->item.player).name;
+                };
+                item.itemName = AP_GetItemName(ap_game, item.item);
+                item.locationName = AP_GetLocationName(ap_game, item.location);
+                item.playerName = getPlayer(0, item.player).name;
+                notify = (item_idx == 0 && last_item_idx <= j && multiworld) || item_idx != 0;
+                getitemfunc(item, notify);
+                if (queueitemrecvmsg && notify) {
+                    AP_ItemRecvMessage* msg = new AP_ItemRecvMessage;
+                    AP_NetworkPlayer sender = getPlayer(0, root[i]["items"][j]["player"].asInt());
+                    msg->type = AP_MessageType::ItemRecv;
+                    msg->item = item;
                     msg->sendPlayer = sender.alias;
                     msg->text = std::string("Received ") + msg->item.itemName + std::string(" from ") + msg->sendPlayer;
                     messageQueue.push_back(msg);
@@ -1233,12 +1233,12 @@ Json::Value getDataPkgRequest(void) {
     return server_req;
 }
 
-std::string getItemName(std::string game, int64_t id) {
+std::string AP_GetItemName(std::string game, int64_t id) {
     std::pair<std::string,int64_t> item = {game,id};
     return map_item_id_name.count(item) ? map_item_id_name.at(item) : std::string("Unknown Item") + std::to_string(id) + " from " + game;
 }
 
-std::string getLocationName(std::string game, int64_t id) {
+std::string AP_GetLocationName(std::string game, int64_t id) {
     std::pair<std::string,int64_t> location = {game,id};
     return map_location_id_name.count(location) ? map_location_id_name.at(location) : std::string("Unknown Location") + std::to_string(id) + " from " + game;
 }

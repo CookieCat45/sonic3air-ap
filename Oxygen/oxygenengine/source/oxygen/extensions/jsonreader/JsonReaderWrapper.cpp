@@ -10,6 +10,7 @@
 #include "oxygen/extensions/jsonreader/JsonReaderWrapper.h"
 #include "oxygen/extensions/jsonreader/JsonReader.h"
 #include "oxygen/extensions/test/TestExtension.h"
+#include "oxygen/network/archipelago/ArchipelagoClient.h"
 
 
 JsonReader* JsonReaderWrapper::getJsonReader()
@@ -18,6 +19,8 @@ JsonReader* JsonReaderWrapper::getJsonReader()
 	switch (mHandle)
 	{
 		case 1:   return &TestExtension::instance().getMainJsonReader();
+		case 3:   return &ArchipelagoClient::instance().getSlotDataReader();
+		case 4:   return &ArchipelagoClient::instance().getLastPacketReader();
 		default:  return nullptr;
 	}
 }

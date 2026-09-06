@@ -127,6 +127,7 @@
     <ClCompile Include="..\..\source\oxygen\network\archipelago\APCpp\Archipelago.cpp" />
     <ClCompile Include="..\..\source\oxygen\network\archipelago\APCpp\Archipelago_DataStorageSim.cpp" />
     <ClCompile Include="..\..\source\oxygen\network\archipelago\APCpp\Archipelago_Gifting.cpp" />
+    <ClCompile Include="..\..\source\oxygen\network\archipelago\ArchipelagoClient.cpp" />
     <ClCompile Include="..\..\source\oxygen\network\crowdcontrol\CrowdControlClient.cpp" />
     <ClCompile Include="..\..\source\oxygen\network\EngineServerClient.cpp" />
     <ClCompile Include="..\..\source\oxygen\network\netplay\ExternalAddressQuery.cpp" />
@@ -324,6 +325,7 @@
     <ClInclude Include="..\..\source\oxygen\menu\loui\LouiVerticalLayout.h" />
     <ClInclude Include="..\..\source\oxygen\menu\loui\LouiWidget.h" />
     <ClInclude Include="..\..\source\oxygen\network\archipelago\APCpp\Archipelago.h" />
+    <ClInclude Include="..\..\source\oxygen\network\archipelago\ArchipelagoClient.h" />
     <ClInclude Include="..\..\source\oxygen\network\crowdcontrol\CrowdControlClient.h" />
     <ClInclude Include="..\..\source\oxygen\network\EngineServerClient.h" />
     <ClInclude Include="..\..\source\oxygen\network\netplay\ExternalAddressQuery.h" />

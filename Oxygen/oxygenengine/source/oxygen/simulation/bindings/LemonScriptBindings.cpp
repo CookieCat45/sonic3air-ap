@@ -30,6 +30,7 @@
 #include "oxygen/helper/RandomNumberGenerator.h"
 #include "oxygen/menu/imgui/ImGuiIntegration.h"
 #include "oxygen/network/crowdcontrol/CrowdControlClient.h"
+#include "oxygen/network/archipelago/ArchipelagoClient.h"
 #include "oxygen/rendering/parts/RenderParts.h"
 #include "oxygen/resources/PaletteCollection.h"
 #include "oxygen/resources/RawDataCollection.h"
@@ -1162,6 +1163,8 @@ void LemonScriptBindings::registerBindings(lemon::Module& module)
 		builder.addNativeFunction("System.setGlobalVariableValueByName", lemon::wrap(&System_setGlobalVariableValueByNameString), defaultFlags)
 			.setParameters("variableName", "value");
 
+		builder.addNativeFunction("System.now", lemon::wrap(&FTX::getTime), defaultFlags);
+
 		builder.addNativeFunction("System.rand", lemon::wrap(&System_rand), defaultFlags);
 
 		builder.addNativeFunction("System.randomFloat", lemon::wrap(&System_randomFloat), defaultFlags);
@@ -1356,6 +1359,9 @@ void LemonScriptBindings::registerBindings(lemon::Module& module)
 
 	// TestExtension
 	TestExtension::instance().registerScriptBindings(builder);
+
+	// Archipelago
+	ArchipelagoClient::instance().registerScriptBindings(builder);
 
 	// Register game-specific script bindings
 	EngineMain::getDelegate().registerScriptBindings(module);

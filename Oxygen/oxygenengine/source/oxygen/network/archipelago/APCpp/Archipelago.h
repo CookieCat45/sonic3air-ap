@@ -7,6 +7,8 @@
 #include <set>
 #include <functional>
 
+static Json::Value ap_slot_data;
+
 void AP_Init(const char*, const char*, const char*, const char*);
 void AP_Init(const char*);
 bool AP_IsInit();
@@ -40,6 +42,9 @@ struct AP_NetworkPlayer {
     std::string game;
 };
 
+std::string AP_GetItemName(std::string game, int64_t id);
+std::string AP_GetLocationName(std::string game, int64_t id);
+
 // Set current client version
 void AP_SetClientVersion(AP_NetworkVersion*);
 
@@ -54,7 +59,7 @@ void AP_SetDeathLinkSupported(bool);
 //Parameter Function must reset local state
 void AP_SetItemClearCallback(std::function<void()> f_itemclr);
 //Parameter Function must collect item id given with parameter. Secound parameter indicates whether or not to notify player
-void AP_SetItemRecvCallback(std::function<void(int64_t,bool)> f_itemrecv);
+void AP_SetItemRecvCallback(std::function<void(AP_NetworkItem,bool)> f_itemrecv);
 //Parameter Function must mark given location id as checked
 void AP_SetLocationCheckedCallback(std::function<void(int64_t)> f_locrecv);
 

@@ -706,6 +706,9 @@
     <ClCompile Include="..\..\source\oxygen\extensions\jsonreader\JsonReaderWrapper.cpp">
       <Filter>extensions\jsonreader</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\oxygen\network\archipelago\ArchipelagoClient.cpp">
+      <Filter>network\archipelago</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\oxygen\helper\BitStream.h">
@@ -1314,6 +1317,9 @@
     </ClInclude>
     <ClInclude Include="..\..\source\oxygen\extensions\jsonreader\JsonReaderWrapper.h">
       <Filter>extensions\jsonreader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\oxygen\network\archipelago\ArchipelagoClient.h">
+      <Filter>network\archipelago</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
