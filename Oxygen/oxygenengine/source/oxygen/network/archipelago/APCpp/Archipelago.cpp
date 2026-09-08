@@ -315,7 +315,7 @@ void AP_SendItem(std::set<int64_t> const& locations) {
     std::set<int64_t> missing;
     for (int64_t idx : locations)
     {
-        auto& itr = missing_locations.find(idx);
+        auto itr = missing_locations.find(idx);
         if (itr != missing_locations.end())
         {
             missing.insert(idx);
@@ -832,6 +832,8 @@ bool parse_response(std::string msg, std::string &request) {
             }
 
             ap_slot_data = root[i]["slot_data"];
+            auth = true;
+            multiworld = false;
 
             if ((root[i]["slot_data"].get("death_link", false).asBool() || root[i]["slot_data"].get("DeathLink", false).asBool()) && deathlinksupported) enable_deathlink = true;
             if (root[i]["slot_data"]["death_link_amnesty"] != Json::nullValue)

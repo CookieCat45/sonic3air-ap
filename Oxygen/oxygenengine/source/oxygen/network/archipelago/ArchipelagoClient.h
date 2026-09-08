@@ -57,7 +57,6 @@ public:
 	JsonReader& getLastPacketReader() { return mLastPacketReader; }
 
 	/* Deprecated functions */
-	bool isZoneAllowed(lemon::StringRef zone);
 	bool isLocationAllowedForChar(uint64 id, uint8 character);
 	void sendDeath();
 	void sendBounce(lemon::StringRef bounce);

@@ -62,10 +62,8 @@ void ArchipelagoClient::init(std::string address, std::string player_name, std::
 // TODO: main AP Client code runs async, does lemonscript accept that?
 void ArchipelagoClient::update(float timeElapsed)
 {
-	Simulation& sim = Application::instance().getSimulation();
 	if (mIniting)
 	{
-		sim.setRunning(false);
 		ImGui::Begin("Connection Input");
 		ImGui::InputText("Server address", serverAddress, sizeof(serverAddress), ImGuiInputTextFlags_CharsNoBlank);
 		ImGui::InputText("Slot name", slotName, sizeof(slotName));
@@ -85,9 +83,9 @@ void ArchipelagoClient::update(float timeElapsed)
 			}
 			else
 			{
-				mConnecting = true;
 				mLastConnect = now();
 				shutdown();
+				mConnecting = true;
 				init(serverAddress, slotName, password);
 			}
 		}
@@ -99,14 +97,20 @@ void ArchipelagoClient::update(float timeElapsed)
 				socketError = "Connection timed out";
 			}
 
+			if (AP_GetConnectionStatus() == AP_ConnectionStatus::ConnectionRefused)
+			{
+				socketError = "Connection refused by the AP server. Most likely invalid slot name or password";
+			}
+
 			if (socketError.length() > 0)
 			{
 				mConnecting = false;
 				shutdown();
+				AP_Shutdown();
 				errorMessage = "Connection failed: " + socketError;
+				printf(errorMessage.c_str());
 				socketError = "";
 				ImGui::OpenPopup("Error");
-				mIniting = false;
 			}
 		}
 
@@ -123,15 +127,16 @@ void ArchipelagoClient::update(float timeElapsed)
 		}
 
 		ImGui::End();
-		return;
 	}
-	AP_ConnectionStatus state = AP_GetConnectionStatus();
-	mConnecting = (state != AP_ConnectionStatus::Disconnected && state != AP_ConnectionStatus::Authenticated);
+	
 	if (isConnected() && mIniting)
 	{
 		mIniting = false;
+		mConnecting = false;
 		mSetupDone = true;
-		sim.setRunning(true);
+		printf("mWriter.write\n");
+		std::cout << mWriter.write(ap_slot_data) << std::endl;
+		printf("\n");
 		mSlotDataReader.loadFromString(mWriter.write(ap_slot_data));
 		callScriptFunction("Archipelago.OnConnected");
 	}
@@ -144,7 +149,7 @@ void ArchipelagoClient::update(float timeElapsed)
 void ArchipelagoClient::shutdown()
 {
 	//AP_Shutdown();
-	mIniting = false;
+	//mIniting = false;
 	mConnecting = false;
 	mSetupDone = false;
 	mPlayerName.clear();
@@ -192,10 +197,6 @@ void ArchipelagoClient::registerScriptBindings(lemon::ModuleBindingsBuilder& bui
 
 	builder.addNativeFunction("Archipelago.getSeedName",
 		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::getSeedName), defaultFlags);
-
-	builder.addNativeFunction("Archipelago.isZoneAllowed",
-		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::isZoneAllowed), defaultFlags)
-		.setParameters("zone");
 
 	builder.addNativeFunction("Archipelago.isLocationChecked",
 		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::isLocationChecked), defaultFlags)
@@ -326,7 +327,7 @@ void ArchipelagoClient::removeTag(lemon::StringRef tag)
 	AP_RoomInfo room_info;
 	AP_GetRoomInfo(&room_info);
 	std::vector<std::string> tags = room_info.tags;
-	auto& itr = std::find(tags.begin(), tags.end(), tag_str);
+	auto itr = std::find(tags.begin(), tags.end(), tag_str);
 	if (itr != tags.end())
 	{
 		tags.erase(itr);
@@ -340,7 +341,7 @@ void ArchipelagoClient::addTag(lemon::StringRef tag)
 	AP_RoomInfo room_info;
 	AP_GetRoomInfo(&room_info);
 	std::vector<std::string> tags = room_info.tags;
-	auto& itr = std::find(tags.begin(), tags.end(), tag_str);
+	auto itr = std::find(tags.begin(), tags.end(), tag_str);
 	if (itr == tags.end())
 	{
 		tags.emplace_back(tag_str);
@@ -406,20 +407,6 @@ uint64 ArchipelagoClient::getPlayerID()
 uint64 ArchipelagoClient::getItemCount(uint64 id)
 {
 	return mItems[id];
-}
-
-bool ArchipelagoClient::isZoneAllowed(lemon::StringRef zone)
-{
-	LogDisplay::instance().setLogDisplay(String("Archipelago.isZoneAllowed is deprecated, use Archipelago.GetSlotData instead"), 6.0f);
-	CodeExec& codeExec = Application::instance().getSimulation().getCodeExec();
-	LemonScriptRuntime& runtime = codeExec.getLemonScriptRuntime();
-	std::string zone_str = std::string(zone.getString());
-	for (size_t i = 0; i < ap_slot_data["ZonesAllowed"].size(); i++)
-	{
-		if (ap_slot_data["ZonesAllowed"][(int32)i].asString() == zone_str)
-			return true;
-	}
-	return false;
 }
 
 bool ArchipelagoClient::isLocationAllowedForChar(uint64 id, uint8 character)
