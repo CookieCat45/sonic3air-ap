@@ -129,20 +129,43 @@ void ArchipelagoClient::update(float timeElapsed)
 		ImGui::End();
 	}
 	
-	if (isConnected() && mIniting)
+	if (isConnected())
 	{
-		mIniting = false;
-		mConnecting = false;
-		mSetupDone = true;
-		printf("mWriter.write\n");
-		std::cout << mWriter.write(ap_slot_data) << std::endl;
-		printf("\n");
-		mSlotDataReader.loadFromString(mWriter.write(ap_slot_data));
-		callScriptFunction("Archipelago.OnConnected");
+		if (mIniting)
+		{
+			mIniting = false;
+			mConnecting = false;
+			mSetupDone = true;
+			mSlotDataReader.loadFromString(mWriter.write(ap_slot_data));
+			callScriptFunction("Archipelago.OnConnected");
+		}
+		
+		if (mNewItems)
+		{
+			CodeExec& codeExec = Application::instance().getSimulation().getCodeExec();
+			CodeExec::FunctionExecData execData;
+			execData.mParams.mReturnType = &lemon::PredefinedDataTypes::VOID;
+			execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::INT_32, mProcessedItems-1);
+			execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::BOOL, mNewProg);
+			// Call signature: "void Archipelago.OnPostReceivedItems(int index, bool is_prog)"
+			codeExec.executeScriptFunction("Archipelago.OnPostReceivedItems", false, &execData);
+			mNewItems = false;
+			mNewProg = false;
+		}
 	}
-	if (!isConnected() && !mConnecting && mSetupDone)
+	
+	if (!mIniting && !mConnecting)
 	{
-		callScriptFunction("Archipelago.OnDisconnected");
+		if (mSetupDone && !isConnected())
+		{
+			mSetupDone = false;
+			callScriptFunction("Archipelago.OnDisconnected");
+		}
+		else if (!mSetupDone && isConnected())
+		{
+			mSetupDone = true;
+			callScriptFunction("Archipelago.OnConnected");
+		}
 	}
 }
 
@@ -157,7 +180,6 @@ void ArchipelagoClient::shutdown()
 	mCheckedLocations.clear();
 	mProcessedItems = 0;
 }
-
 
 void ArchipelagoClient::registerScriptBindings(lemon::ModuleBindingsBuilder& builder)
 {
@@ -179,22 +201,6 @@ void ArchipelagoClient::registerScriptBindings(lemon::ModuleBindingsBuilder& bui
 		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::getItemCount), defaultFlags)
 		.setParameters("id");
 
-	builder.addNativeFunction("Archipelago.setDataInt",
-		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::setDataInt), defaultFlags)
-		.setParameters("name", "value");
-
-	builder.addNativeFunction("Archipelago.getDataInt",
-		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::getDataInt), defaultFlags)
-		.setParameters("name");
-
-	builder.addNativeFunction("Archipelago.setDataFloat",
-		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::setDataFloat), defaultFlags)
-		.setParameters("name", "value");
-
-	builder.addNativeFunction("Archipelago.getDataFloat",
-		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::getDataFloat), defaultFlags)
-		.setParameters("name");
-
 	builder.addNativeFunction("Archipelago.getSeedName",
 		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::getSeedName), defaultFlags);
 
@@ -208,9 +214,6 @@ void ArchipelagoClient::registerScriptBindings(lemon::ModuleBindingsBuilder& bui
 
 	builder.addNativeFunction("Archipelago.triggerGoal",
 		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::sendGoal), defaultFlags);
-
-	builder.addNativeFunction("Archipelago.sendDeath",
-		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::sendDeath), defaultFlags);
 
 	builder.addNativeFunction("Archipelago.sendBounce",
 		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::sendBounce), defaultFlags);
@@ -253,23 +256,24 @@ void ArchipelagoClient::onItemRecv(AP_NetworkItem& item, bool notify)
 	// Prepare and execute script call
 	CodeExec& codeExec = Application::instance().getSimulation().getCodeExec();
 	LemonScriptRuntime& runtime = codeExec.getLemonScriptRuntime();
-	mProcessedItems++;
 	if (notify) // TODO: notify does not work reliably due to being dependent on server state
 	{
-		// Call signature: "void Archipelago.OnNewItem(string itemName, u64 item)"
+		// Call signature: "void Archipelago.OnNewItem(string itemName, u64 item, u64 flags)"
 		CodeExec::FunctionExecData execData;
 		execData.mParams.mReturnType = &lemon::PredefinedDataTypes::VOID;
 		execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::STRING, runtime.getInternalLemonRuntime().addString(item.itemName));
 		execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::UINT_64, item.item);
+		execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::UINT_64, item.flags);
 		codeExec.executeScriptFunction("Archipelago.OnNewItem", false, &execData);
+		if (item.flags & 0b001)
+		{
+			mNewProg = true;
+		}
 	}
+
+	mProcessedItems++;
+	mNewItems = true;
 	mItems[item.item] += 1;
-	CodeExec::FunctionExecData execData;
-	execData.mParams.mReturnType = &lemon::PredefinedDataTypes::VOID;
-	execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::INT_32, mProcessedItems);
-	execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::BOOL, (item.flags & 0b001) != 0);
-	// Call signature: "void Archipelago.OnReceivedItems(int index, bool is_prog)"
-	codeExec.executeScriptFunction("Archipelago.OnReceivedItems", false, &execData);
 }
 
 void ArchipelagoClient::onBounced(AP_Bounce& bounce)
@@ -349,40 +353,6 @@ void ArchipelagoClient::addTag(lemon::StringRef tag)
 	}
 }
 
-void ArchipelagoClient::setDataInt(lemon::StringRef name, int64 data)
-{
-	LogDisplay::instance().setLogDisplay(String("Archipelago.setDataInt is deprecated"), 6.0f);
-	ap_slot_data[name.getString().data()] = data;
-}
-
-int64 ArchipelagoClient::getDataInt(lemon::StringRef name)
-{
-	LogDisplay::instance().setLogDisplay(String("Archipelago.getDataInt is deprecated"), 6.0f);
-	if (ap_slot_data.isNull() || !ap_slot_data.isMember(name.getString().data()) || ap_slot_data[name.getString().data()].isNull())
-	{
-		return 0;
-	}
-
-	return ap_slot_data[name.getString().data()].asInt64();
-}
-
-void ArchipelagoClient::setDataFloat(lemon::StringRef name, float data)
-{
-	LogDisplay::instance().setLogDisplay(String("Archipelago.setDataFloat is deprecated"), 6.0f);
-	ap_slot_data[name.getString().data()] = data;
-}
-
-float ArchipelagoClient::getDataFloat(lemon::StringRef name)
-{
-	LogDisplay::instance().setLogDisplay(String("Archipelago.getDataFloat is deprecated"), 6.0f);
-	if (ap_slot_data.isNull() || !ap_slot_data.isMember(name.getString().data()) || ap_slot_data[name.getString().data()].isNull())
-	{
-		return 0.0;
-	}
-
-	return ap_slot_data[name.getString().data()].asFloat();
-}
-
 lemon::StringRef ArchipelagoClient::getSeedName()
 {
 	CodeExec& codeExec = Application::instance().getSimulation().getCodeExec();
@@ -421,6 +391,7 @@ bool ArchipelagoClient::isLocationAllowedForChar(uint64 id, uint8 character)
 	return false;
 }
 
+/*
 void ArchipelagoClient::sendDeath()
 {
 	LogDisplay::instance().setLogDisplay(String("Archipelago.sendDeath is deprecated, use Archipelago.sendBounce instead"), 6.0f);
@@ -440,6 +411,7 @@ void ArchipelagoClient::sendDeath()
 	b.tags = &tags;
 	AP_SendBounce(b);
 }
+*/
 
 void ArchipelagoClient::sendBounce(lemon::StringRef bounce)
 {
