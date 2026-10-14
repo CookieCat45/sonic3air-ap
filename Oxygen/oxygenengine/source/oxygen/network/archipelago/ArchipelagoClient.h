@@ -35,6 +35,7 @@ public:
 	void onBounced(AP_Bounce& bounce);
 
 	bool isLocationChecked(uint64 location_id);
+	bool doesLocationExist(uint64 location_id);
 
 	void sendGoal();
 
@@ -50,9 +51,8 @@ public:
 	JsonReader& getSlotDataReader() { return mSlotDataReader; }
 	JsonReader& getLastPacketReader() { return mLastPacketReader; }
 
-	/* Deprecated functions */
-	bool isLocationAllowedForChar(uint64 id, uint8 character);
 	void sendBounce(lemon::StringRef bounce);
+	
 private:
 	bool mIniting = false;
 	bool mSetupDone = false;
@@ -80,10 +80,11 @@ private:
 
 	std::string mPlayerName;
 	uint64 mProcessedItems = 0;
-	bool mNewItems = false;
 	bool mNewProg = false;
 	std::unordered_map<uint64, uint64> mItems;
 	std::set<uint64> mCheckedLocations;
+	std::vector<uint64> mPendingLocations;
+	std::vector<AP_NetworkItem> mItemData;
 
 	Json::Reader mReader;
 	Json::FastWriter mWriter;

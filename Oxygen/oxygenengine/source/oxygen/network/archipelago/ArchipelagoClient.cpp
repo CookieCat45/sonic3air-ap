@@ -1,5 +1,4 @@
 #include "oxygen/pch.h"
-
 #include "oxygen/network/archipelago/ArchipelagoClient.h"
 #include "oxygen/application/Application.h"
 #include "oxygen/simulation/CodeExec.h"
@@ -8,7 +7,7 @@
 #include "oxygen/application/GameProfile.h"
 #include <oxygen/helper/JsonHelper.h>
 #include "oxygen/extensions/jsonreader/JsonReaderWrapper.h"
-
+#include "oxygen/menu/devmode/DevModeMainWindow.h"
 #include <lemon/program/ModuleBindingsBuilder.h>
 
 #if defined(PLATFORM_WINDOWS)
@@ -64,6 +63,12 @@ void ArchipelagoClient::update(float timeElapsed)
 {
 	if (mIniting)
 	{
+		if (ImGui::GetCurrentContext() == nullptr) 
+		{
+			ImGuiManager::instance().getOrAddImGuiContentProvider<DevModeMainWindow>(0);
+        	return;
+		}
+		
 		ImGui::Begin("Connection Input");
 		ImGui::InputText("Server address", serverAddress, sizeof(serverAddress), ImGuiInputTextFlags_CharsNoBlank);
 		ImGui::InputText("Slot name", slotName, sizeof(slotName));
@@ -128,7 +133,7 @@ void ArchipelagoClient::update(float timeElapsed)
 
 		ImGui::End();
 	}
-	
+
 	if (isConnected())
 	{
 		if (mIniting)
@@ -140,17 +145,45 @@ void ArchipelagoClient::update(float timeElapsed)
 			callScriptFunction("Archipelago.OnConnected");
 		}
 		
-		if (mNewItems)
+		if (mItemData.size() > 0)
 		{
 			CodeExec& codeExec = Application::instance().getSimulation().getCodeExec();
+			LemonScriptRuntime& runtime = codeExec.getLemonScriptRuntime();
+			for (int i = 0; i < mItemData.size(); i++)
+			{
+				// Call signature: "void Archipelago.OnNewItem(string itemName, u64 item, u64 flags)"
+				CodeExec::FunctionExecData execData;
+				execData.mParams.mReturnType = &lemon::PredefinedDataTypes::VOID;
+				execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::STRING, runtime.getInternalLemonRuntime().addString(mItemData[i].itemName));
+				execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::UINT_64, mItemData[i].item);
+				execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::UINT_64, mItemData[i].flags);
+				codeExec.executeScriptFunction("Archipelago.OnNewItem", false, &execData);
+			}
+
+			mItemData.clear();
 			CodeExec::FunctionExecData execData;
 			execData.mParams.mReturnType = &lemon::PredefinedDataTypes::VOID;
 			execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::INT_32, mProcessedItems-1);
 			execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::BOOL, mNewProg);
 			// Call signature: "void Archipelago.OnPostReceivedItems(int index, bool is_prog)"
 			codeExec.executeScriptFunction("Archipelago.OnPostReceivedItems", false, &execData);
-			mNewItems = false;
 			mNewProg = false;
+		}
+		
+		if (mPendingLocations.size() > 0)
+		{
+			// Prepare and execute script call
+			CodeExec& codeExec = Application::instance().getSimulation().getCodeExec();
+			for (int i = 0; i < mPendingLocations.size(); i++)
+			{
+				// Call signature: "void Archipelago.onLocationChecked(u64 location)"
+				CodeExec::FunctionExecData execData;
+				execData.mParams.mReturnType = &lemon::PredefinedDataTypes::VOID;
+				execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::UINT_64, mPendingLocations[i]);
+				codeExec.executeScriptFunction("Archipelago.OnLocationChecked", false, &execData);
+			}
+
+			mPendingLocations.clear();
 		}
 	}
 	
@@ -207,10 +240,10 @@ void ArchipelagoClient::registerScriptBindings(lemon::ModuleBindingsBuilder& bui
 	builder.addNativeFunction("Archipelago.isLocationChecked",
 		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::isLocationChecked), defaultFlags)
 		.setParameters("id");
-
-	builder.addNativeFunction("Archipelago.isLocationAllowedForChar",
-		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::isLocationAllowedForChar), defaultFlags)
-		.setParameters("id", "character");
+		
+	builder.addNativeFunction("Archipelago.doesLocationExist",
+		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::doesLocationExist), defaultFlags)
+		.setParameters("id");
 
 	builder.addNativeFunction("Archipelago.triggerGoal",
 		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::sendGoal), defaultFlags);
@@ -240,39 +273,19 @@ void ArchipelagoClient::checkLocation(uint64 location_id)
 void ArchipelagoClient::onCheckLocation(uint64 location_id)
 {
 	mCheckedLocations.emplace(location_id);
-	// Prepare and execute script call
-	CodeExec& codeExec = Application::instance().getSimulation().getCodeExec();
-	LemonScriptRuntime& runtime = codeExec.getLemonScriptRuntime();
-
-	// Call signature: "void Archipelago.onLocationChecked(u64 location)"
-	CodeExec::FunctionExecData execData;
-	execData.mParams.mReturnType = &lemon::PredefinedDataTypes::VOID;
-	execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::UINT_64, location_id);
-	codeExec.executeScriptFunction("Archipelago.OnLocationChecked", false, &execData);
+	mPendingLocations.emplace_back(location_id);
 }
 
 void ArchipelagoClient::onItemRecv(AP_NetworkItem& item, bool notify)
 {
-	// Prepare and execute script call
-	CodeExec& codeExec = Application::instance().getSimulation().getCodeExec();
-	LemonScriptRuntime& runtime = codeExec.getLemonScriptRuntime();
 	if (notify) // TODO: notify does not work reliably due to being dependent on server state
 	{
-		// Call signature: "void Archipelago.OnNewItem(string itemName, u64 item, u64 flags)"
-		CodeExec::FunctionExecData execData;
-		execData.mParams.mReturnType = &lemon::PredefinedDataTypes::VOID;
-		execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::STRING, runtime.getInternalLemonRuntime().addString(item.itemName));
-		execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::UINT_64, item.item);
-		execData.mParams.mParams.emplace_back(lemon::PredefinedDataTypes::UINT_64, item.flags);
-		codeExec.executeScriptFunction("Archipelago.OnNewItem", false, &execData);
+		mItemData.emplace_back(item);
 		if (item.flags & 0b001)
-		{
 			mNewProg = true;
-		}
 	}
 
 	mProcessedItems++;
-	mNewItems = true;
 	mItems[item.item] += 1;
 }
 
@@ -310,6 +323,11 @@ void ArchipelagoClient::onBounced(AP_Bounce& bounce)
 bool ArchipelagoClient::isLocationChecked(uint64 location_id)
 {
 	return mCheckedLocations.find(location_id) != mCheckedLocations.end();
+}
+
+bool ArchipelagoClient::doesLocationExist(uint64 location_id)
+{
+	return mCheckedLocations.find(location_id) != mCheckedLocations.end() || missing_locations.find(location_id) != missing_locations.end();
 }
 
 void ArchipelagoClient::sendGoal()
@@ -377,18 +395,6 @@ uint64 ArchipelagoClient::getPlayerID()
 uint64 ArchipelagoClient::getItemCount(uint64 id)
 {
 	return mItems[id];
-}
-
-bool ArchipelagoClient::isLocationAllowedForChar(uint64 id, uint8 character)
-{
-	LogDisplay::instance().setLogDisplay(String("Archipelago.isLocationAllowedForChar is deprecated, use Archipelago.GetSlotData instead"), 6.0f);
-	auto chars = ap_slot_data["LocationCharWhitelists"][std::to_string(id)];
-	for (size_t i = 0; i < chars.size(); i++)
-	{
-		if (chars.asInt() == character)
-			return true;
-	}
-	return false;
 }
 
 /*

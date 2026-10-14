@@ -65,7 +65,6 @@ std::map<std::pair<std::string,int64_t>, std::string> map_item_id_name;
 
 // Data Sets
 std::set<int> teams_set;
-std::set<int64_t> missing_locations;
 
 // Callback function pointers
 std::function<void()> resetItemValues = nullptr;
@@ -625,6 +624,7 @@ void AP_CommitServerData() {
             *(request.second) = AP_RequestStatus::Done;
         if (!multiworld)
             resolveDataStorageOp(request.first);
+            
         queue_server_data.pop();
     }
     if (multiworld) APSend(writer.write(req));
