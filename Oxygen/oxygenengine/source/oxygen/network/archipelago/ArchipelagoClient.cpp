@@ -40,6 +40,7 @@ namespace functions
 static char serverAddress[512] = "localhost:38281";
 static char slotName[512] = "";
 static char password[512] = "";
+static char textInput[1024] = "";
 static std::string errorMessage = "";
 static std::string socketError = "";
 
@@ -185,8 +186,57 @@ void ArchipelagoClient::update(float timeElapsed)
 
 			mPendingLocations.clear();
 		}
+
+		static bool showChat = true;
+		if (showChat)
+		{
+			static std::vector<std::string> msgs;
+			static int oldSize = 0;
+			bool shouldScroll = false;
+			while (AP_IsMessagePending())
+			{
+				AP_Message* msg = AP_GetLatestMessage();
+				msgs.push_back(msg->text);
+				if (msgs.size() > 100)
+				{
+					msgs.erase(msgs.begin());
+				}
+
+				AP_ClearLatestMessage();
+			}
+			
+			if (oldSize != msgs.size())
+			{
+				oldSize = msgs.size();
+				shouldScroll = true;
+			}
+
+			ImGui::Begin("Text Chat", &showChat, ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse);
+			ImGui::BeginChild("TextField", ImVec2(0, -60));
+			for (int i = 0; i < msgs.size(); i++)
+			{
+				ImGui::TextWrapped("%s", msgs[i].c_str());
+			}
+			
+			if (shouldScroll && !ImGui::IsItemActive() && !ImGui::IsWindowFocused()) 
+			{
+				ImGui::SetScrollHereY(1.0f);
+			}
+
+			ImGui::EndChild();
+			ImGui::Separator();
+			ImGui::InputText("Input", textInput, sizeof(textInput));
+			bool shouldSend = ImGui::Button("Send");
+			if (shouldSend && std::strlen(textInput) > 0)
+			{
+				AP_Say(std::string(textInput));
+				textInput[0] = '\0';
+			}
+			
+			ImGui::End();
+		}
 	}
-	
+
 	if (!mIniting && !mConnecting)
 	{
 		if (mSetupDone && !isConnected())
