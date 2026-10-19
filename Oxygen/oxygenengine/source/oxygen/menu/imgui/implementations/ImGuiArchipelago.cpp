@@ -9,6 +9,7 @@ ImGuiArchipelago::ImGuiArchipelago()
 	mShowConnectInput = true;
 }
 
+// TODO: figure out a way to make enter presses not trigger in-game inputs
 void ImGuiArchipelago::buildImGuiContent()
 {
 	ImGui::SetWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_FirstUseEver);
@@ -21,7 +22,7 @@ void ImGuiArchipelago::buildImGuiContent()
 		ImGui::InputText("Server address", mServerAddress, sizeof(mServerAddress), ImGuiInputTextFlags_CharsNoBlank);
 		ImGui::InputText("Slot name", mSlotName, sizeof(mSlotName));
 		ImGui::InputText("Password", mPassword, sizeof(mPassword));
-		bool connectClicked = ImGui::Button(client.mConnecting ? "Connecting..." : "Connect");
+		bool connectClicked = ImGui::Button(client.mConnecting ? "Connecting..." : "Connect") || ImGui::IsKeyPressed(ImGuiKey_Enter) && ImGui::IsWindowFocused();
 		if (connectClicked && !client.mConnecting)
 		{
 			if (std::strlen(mServerAddress) <= 0)
@@ -124,7 +125,7 @@ void ImGuiArchipelago::buildImGuiContent()
 		ImGui::EndChild();
 		ImGui::Separator();
 		ImGui::InputText("Input", mTextInput, sizeof(mTextInput));
-		if (ImGui::Button("Send") && std::strlen(mTextInput) > 0)
+		if ((ImGui::Button("Send") || ImGui::IsKeyPressed(ImGuiKey_Enter) && ImGui::IsWindowFocused()) && std::strlen(mTextInput) > 0)
 		{
 			AP_Say(std::string(mTextInput));
 			mTextInput[0] = '\0';
