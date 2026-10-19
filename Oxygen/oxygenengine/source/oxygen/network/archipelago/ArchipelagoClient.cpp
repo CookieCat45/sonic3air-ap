@@ -45,7 +45,9 @@ namespace functions
 void ArchipelagoClient::start()
 {
 	mIniting = true;
-	ImGuiManager::instance().getOrAddImGuiContentProvider<ImGuiArchipelago>(0).mShowConnectInput = true;
+	#ifdef SUPPORT_IMGUI
+		ImGuiManager::instance().getOrAddImGuiContentProvider<ImGuiArchipelago>(0).mShowConnectInput = true;
+	#endif
 }
 
 void ArchipelagoClient::init(std::string address, std::string player_name, std::string password)
