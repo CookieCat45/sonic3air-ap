@@ -13,7 +13,6 @@
 #include "oxygen/network/archipelago/APCpp/Archipelago.h"
 #include "oxygen/menu/imgui/ImGuiDefinitions.h"
 #if defined SUPPORT_IMGUI
-	#include "oxygen/menu/imgui/ImGuiContentProvider.h"
 	class ImGuiArchipelago;
 #endif
 
