@@ -9,6 +9,11 @@
 #include "oxygen/extensions/jsonreader/JsonReaderWrapper.h"
 #include "oxygen/menu/devmode/DevModeMainWindow.h"
 #include <lemon/program/ModuleBindingsBuilder.h>
+#include "oxygen/menu/imgui/ImGuiDefinitions.h"
+
+#if defined SUPPORT_IMGUI
+	#include "oxygen/menu/imgui/implementations/ImGuiArchipelago.h"
+#endif
 
 #if defined(PLATFORM_WINDOWS)
 	#pragma comment(lib, "ixwebsocket.lib")
@@ -37,16 +42,10 @@ namespace functions
 	}
 }
 
-static char serverAddress[512] = "localhost:38281";
-static char slotName[512] = "";
-static char password[512] = "";
-static char textInput[1024] = "";
-static std::string errorMessage = "";
-static std::string socketError = "";
-
 void ArchipelagoClient::start()
 {
 	mIniting = true;
+	ImGuiManager::instance().getOrAddImGuiContentProvider<ImGuiArchipelago>(0).mShowConnectInput = true;
 }
 
 void ArchipelagoClient::init(std::string address, std::string player_name, std::string password)
@@ -56,85 +55,14 @@ void ArchipelagoClient::init(std::string address, std::string player_name, std::
 	AP_SetItemRecvCallback([](AP_NetworkItem item, bool notify) { ArchipelagoClient::instance().onItemRecv(item, notify); });
 	AP_SetItemClearCallback([]() { ArchipelagoClient::instance().mItems.clear(); });
 	AP_SetLocationCheckedCallback([](int64_t location) { ArchipelagoClient::instance().onCheckLocation(location); });
+	AP_RegisterBouncedCallback([](AP_Bounce bounce) { ArchipelagoClient::instance().onBounced(bounce); });
 	AP_Start();
 }
 
 // TODO: main AP Client code runs async, does lemonscript accept that?
 void ArchipelagoClient::update(float timeElapsed)
 {
-	if (mIniting)
-	{
-		if (ImGui::GetCurrentContext() == nullptr) 
-		{
-			ImGuiManager::instance().getOrAddImGuiContentProvider<DevModeMainWindow>(0);
-        	return;
-		}
-		
-		ImGui::Begin("Connection Input");
-		ImGui::InputText("Server address", serverAddress, sizeof(serverAddress), ImGuiInputTextFlags_CharsNoBlank);
-		ImGui::InputText("Slot name", slotName, sizeof(slotName));
-		ImGui::InputText("Password", password, sizeof(password));
-		bool connectClicked = ImGui::Button(mConnecting ? "Connecting..." : "Connect");
-		if (connectClicked && !mConnecting)
-		{
-			if (std::strlen(serverAddress) <= 0)
-			{
-				errorMessage = "Please enter a server address";
-				ImGui::OpenPopup("Error");
-			}
-			else if (std::strlen(slotName) <= 0)
-			{
-				errorMessage = "Please enter a slot name";
-				ImGui::OpenPopup("Error");
-			}
-			else
-			{
-				mLastConnect = now();
-				shutdown();
-				mConnecting = true;
-				init(serverAddress, slotName, password);
-			}
-		}
-		else if (mConnecting)
-		{
-			bool timeOut = static_cast<unsigned long>(now() - mLastConnect) > 11000;
-			if (timeOut)
-			{
-				socketError = "Connection timed out";
-			}
-
-			if (AP_GetConnectionStatus() == AP_ConnectionStatus::ConnectionRefused)
-			{
-				socketError = "Connection refused by the AP server. Most likely invalid slot name or password";
-			}
-
-			if (socketError.length() > 0)
-			{
-				mConnecting = false;
-				shutdown();
-				AP_Shutdown();
-				errorMessage = "Connection failed: " + socketError;
-				printf(errorMessage.c_str());
-				socketError = "";
-				ImGui::OpenPopup("Error");
-			}
-		}
-
-		if (ImGui::BeginPopupModal("Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-		{
-			ImGui::Text("%s", errorMessage.c_str());
-			ImGui::Separator();
-			if (ImGui::Button("OK", ImVec2(120, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
-			{
-				ImGui::CloseCurrentPopup();
-			}
-
-			ImGui::EndPopup();
-		}
-
-		ImGui::End();
-	}
-
+	// The ImGui class will initiate the connection
 	if (isConnected())
 	{
 		if (mIniting)
@@ -186,54 +114,16 @@ void ArchipelagoClient::update(float timeElapsed)
 
 			mPendingLocations.clear();
 		}
-
-		static bool showChat = true;
-		if (showChat)
+		
+		if (mBouncedData.size() > 0)
 		{
-			static std::vector<std::string> msgs;
-			static int oldSize = 0;
-			bool shouldScroll = false;
-			while (AP_IsMessagePending())
+			for (int i = 0; i < mBouncedData.size(); i++)
 			{
-				AP_Message* msg = AP_GetLatestMessage();
-				msgs.push_back(msg->text);
-				if (msgs.size() > 100)
-				{
-					msgs.erase(msgs.begin());
-				}
-
-				AP_ClearLatestMessage();
-			}
-			
-			if (oldSize != msgs.size())
-			{
-				oldSize = msgs.size();
-				shouldScroll = true;
+				mLastPacketReader.loadFromString(mWriter.write(mBouncedData[i]));
+				callScriptFunction("Archipelago.onBounced");
 			}
 
-			ImGui::Begin("Text Chat", &showChat, ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse);
-			ImGui::BeginChild("TextField", ImVec2(0, -60));
-			for (int i = 0; i < msgs.size(); i++)
-			{
-				ImGui::TextWrapped("%s", msgs[i].c_str());
-			}
-			
-			if (shouldScroll && !ImGui::IsItemActive() && !ImGui::IsWindowFocused()) 
-			{
-				ImGui::SetScrollHereY(1.0f);
-			}
-
-			ImGui::EndChild();
-			ImGui::Separator();
-			ImGui::InputText("Input", textInput, sizeof(textInput));
-			bool shouldSend = ImGui::Button("Send");
-			if (shouldSend && std::strlen(textInput) > 0)
-			{
-				AP_Say(std::string(textInput));
-				textInput[0] = '\0';
-			}
-			
-			ImGui::End();
+			mBouncedData.clear();
 		}
 	}
 
@@ -279,6 +169,9 @@ void ArchipelagoClient::registerScriptBindings(lemon::ModuleBindingsBuilder& bui
 
 	builder.addNativeFunction("Archipelago.getPlayerName",
 		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::getPlayerName), defaultFlags);
+		
+	builder.addNativeFunction("Archipelago.getPlayerID",
+		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::getPlayerID), defaultFlags);
 
 	builder.addNativeFunction("Archipelago.getItemCount",
 		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::getItemCount), defaultFlags)
@@ -298,16 +191,32 @@ void ArchipelagoClient::registerScriptBindings(lemon::ModuleBindingsBuilder& bui
 	builder.addNativeFunction("Archipelago.triggerGoal",
 		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::sendGoal), defaultFlags);
 
+	builder.addNativeFunction("Archipelago.addTag",
+		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::addTag), defaultFlags)
+		.setParameters("tag");
+		
+	builder.addNativeFunction("Archipelago.removeTag",
+		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::removeTag), defaultFlags)
+		.setParameters("tag");
+		
+	builder.addNativeFunction("Archipelago.hasTag",
+		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::hasTag), defaultFlags)
+		.setParameters("tag");
+
 	builder.addNativeFunction("Archipelago.sendBounce",
-		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::sendBounce), defaultFlags);
+		lemon::wrap(ArchipelagoClient::instance(), &ArchipelagoClient::sendBounce), defaultFlags)
+		.setParameters("bounce");
 
 	builder.addNativeFunction("Archipelago.getSlotData",
 		lemon::wrap(functions::getSlotDataReader), defaultFlags);
 
 	builder.addNativeFunction("Archipelago.getLastPacket",
 		lemon::wrap(functions::getLastPacketReader), defaultFlags);
-}
 
+	// it would probably be better to just move this to base lemonscript (e.g. System.getTime) but this is needed for deathlink to work properly
+	builder.addNativeFunction("Archipelago.getTime",
+		lemon::wrap(ArchipelagoClient::now), defaultFlags);
+}
 
 bool ArchipelagoClient::isConnected()
 {
@@ -366,8 +275,7 @@ void ArchipelagoClient::onBounced(AP_Bounce& bounce)
 	Json::Value data;
 	mReader.parse(bounce.data, data);
 	root["data"] = data;
-	mLastPacketReader.loadFromString(mWriter.write(root));
-	callScriptFunction("Archipelago.onBounced");
+	mBouncedData.emplace_back(root);
 }
 
 bool ArchipelagoClient::isLocationChecked(uint64 location_id)
@@ -447,61 +355,43 @@ uint64 ArchipelagoClient::getItemCount(uint64 id)
 	return mItems[id];
 }
 
-/*
-void ArchipelagoClient::sendDeath()
-{
-	LogDisplay::instance().setLogDisplay(String("Archipelago.sendDeath is deprecated, use Archipelago.sendBounce instead"), 6.0f);
-	AP_RoomInfo room_info;
-	AP_GetRoomInfo(&room_info);
-	bool deathlink = std::find(room_info.tags.begin(), room_info.tags.end(), "DeathLink") != room_info.tags.end();
-	if (!isConnected() || !deathlink)
-		return;
-	AP_Bounce b;
-	Json::Value v;
-	v["time"] = (int64_t)now();
-	v["source"] = mPlayerName; // Name and Shame >:D
-	b.data = mWriter.write(v);
-	b.games = nullptr;
-	b.slots = nullptr;
-	std::vector<std::string> tags = { std::string("DeathLink") };
-	b.tags = &tags;
-	AP_SendBounce(b);
-}
-*/
-
 void ArchipelagoClient::sendBounce(lemon::StringRef bounce)
 {
 	AP_Bounce b;
 	Json::Value v;
 	mReader.parse(std::string{ bounce.getString() }, v);
 	b.data = mWriter.write(v["data"]);
+	std::vector<std::string> games;
+	std::vector<int64_t> slots;
+	std::vector<std::string> tags;
 	if (v.isMember("games"))
 	{
-		std::vector<std::string> games;
 		for (size_t i = 0; i < v["games"].size(); i++)
 		{
 			games.push_back(v["games"][(int32)i].asString());
 		}
+		
 		b.games = &games;
 	}
 	if (v.isMember("slots"))
 	{
-		std::vector<int64_t> slots;
 		for (size_t i = 0; i < v["slots"].size(); i++)
 		{
 			slots.push_back(v["slots"][(int32)i].asInt());
 		}
+		
 		b.slots = &slots;
 	}
 	if (v.isMember("tags"))
 	{
-		std::vector<std::string> tags;
 		for (size_t i = 0; i < v["tags"].size(); i++)
 		{
 			tags.push_back(v["tags"][(int32)i].asString());
 		}
+		
 		b.tags = &tags;
 	}
+	
 	AP_SendBounce(b);
 }
 

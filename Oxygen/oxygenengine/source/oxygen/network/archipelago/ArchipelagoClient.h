@@ -7,10 +7,15 @@
 */
 
 #pragma once
-
+#include <ctime>
 #include <lemon/program/StringRef.h>
 #include "oxygen/extensions/jsonreader/JsonReader.h"
 #include "oxygen/network/archipelago/APCpp/Archipelago.h"
+#include "oxygen/menu/imgui/ImGuiDefinitions.h"
+#if defined SUPPORT_IMGUI
+	#include "oxygen/menu/imgui/ImGuiContentProvider.h"
+	class ImGuiArchipelago;
+#endif
 
 namespace lemon
 {
@@ -52,30 +57,14 @@ public:
 	JsonReader& getLastPacketReader() { return mLastPacketReader; }
 
 	void sendBounce(lemon::StringRef bounce);
-	
 private:
 	bool mIniting = false;
 	bool mSetupDone = false;
 	bool mConnecting = false;
-
 	unsigned long mLastConnect = 0;
-	static unsigned long now()
+	static uint64 now()
 	{
-#if defined WIN32 || defined _WIN32
-#if WINVER >= 0x0600 || _WIN32_WINNT >= 0x0600
-		if (sizeof(unsigned long) > 4) {
-			return static_cast<unsigned long>(FTX::getTime());
-		}
-#endif
-		return static_cast<unsigned long>(FTX::getTime());
-#else
-		timespec ts{};
-		clock_gettime(CLOCK_MONOTONIC, &ts);
-		auto ms = static_cast<unsigned long>(
-			static_cast<uint64_t>(ts.tv_sec) * 1000);
-		ms += static_cast<unsigned long>(ts.tv_nsec / 1000000);
-		return ms;
-#endif
+		return static_cast<uint64>(std::time(nullptr));
 	}
 
 	std::string mPlayerName;
@@ -85,6 +74,7 @@ private:
 	std::set<uint64> mCheckedLocations;
 	std::vector<uint64> mPendingLocations;
 	std::vector<AP_NetworkItem> mItemData;
+	std::vector<Json::Value> mBouncedData;
 
 	Json::Reader mReader;
 	Json::FastWriter mWriter;
@@ -93,4 +83,8 @@ private:
 	JsonReader mLastPacketReader;
 
 	void callScriptFunction(std::string functionName);
+	
+	#ifdef SUPPORT_IMGUI
+		friend class ImGuiArchipelago;
+	#endif
 };
