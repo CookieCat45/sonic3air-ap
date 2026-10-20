@@ -161,6 +161,7 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
             }
             else if (msg->type == ix::WebSocketMessageType::Error || msg->type == ix::WebSocketMessageType::Close)
             {
+                logfunc("WebSocket error: " + msg->errorInfo.reason);
                 auth = false;
                 for (std::pair<std::string,AP_GetServerDataRequest*> itr : map_server_data) {
                     itr.second->status = AP_RequestStatus::Error;
