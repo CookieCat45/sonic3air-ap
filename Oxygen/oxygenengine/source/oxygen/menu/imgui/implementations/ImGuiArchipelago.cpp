@@ -92,7 +92,29 @@ void ImGuiArchipelago::buildImGuiContent()
 			std::ostringstream stream;
 			if (msg->type == AP_MessageType::ItemRecv)
 			{
-				stream << "[NEW ITEM] ";
+				AP_ItemRecvMessage* msg2 = static_cast<AP_ItemRecvMessage*>(msg);
+				msg->text = "[NEW ITEM] " + std::string("Received ") + msg2->item.itemName;
+				if (msg2->item.playerName != msg2->sendPlayer)
+				{
+					msg->text += std::string(" from ") + msg2->sendPlayer;
+				}
+				
+				msg->text += std::string(" (") + msg2->item.locationName + std::string(")");
+			}
+			else if (msg->type == AP_MessageType::ItemSend)
+			{
+				AP_ItemSendMessage* msg2 = static_cast<AP_ItemSendMessage*>(msg);
+				if (msg2->recvPlayer == msg2->item.playerName)
+				{
+					msg->text = msg2->recvPlayer + std::string(" found their ") + msg2->item.itemName;
+				}
+				else
+				{
+					msg->text = msg2->recvPlayer + std::string(" received ") + msg2->item.itemName;
+					msg->text += std::string(" from ") + msg2->item.playerName;
+				}
+				
+				msg->text += std::string(" (") + msg2->item.locationName + std::string(")");
 			}
 			else if (msg->type == AP_MessageType::Hint)
 			{
