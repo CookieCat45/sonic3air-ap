@@ -60,7 +60,7 @@ private:
 	bool mIniting = false;
 	bool mSetupDone = false;
 	bool mConnecting = false;
-	unsigned long mLastConnect = 0;
+	uint64 mLastConnect = 0;
 	static uint64 now()
 	{
 		return static_cast<uint64>(std::time(nullptr));

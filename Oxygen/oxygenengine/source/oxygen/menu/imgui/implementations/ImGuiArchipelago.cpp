@@ -45,7 +45,7 @@ void ImGuiArchipelago::buildImGuiContent()
 		}
 		else if (client.mConnecting)
 		{
-			bool timeOut = static_cast<unsigned long>(client.now() - client.mLastConnect) > 11;
+			bool timeOut = client.now() - client.mLastConnect > 11;
 			if (timeOut)
 			{
 				mSocketError = "Connection timed out";

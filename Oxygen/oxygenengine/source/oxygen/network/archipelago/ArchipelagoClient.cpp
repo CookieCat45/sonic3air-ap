@@ -20,6 +20,9 @@
 	#pragma comment(lib, "mbedcrypto.lib")
 	#pragma comment(lib, "mbedx509.lib")
 	#pragma comment(lib, "mbedtls.lib")
+	#if defined(_DEBUG)
+		#pragma comment(linker, "/NODEFAULTLIB:LIBCMT")
+	#endif
 #endif
 
 //required for mbed tls, causes a lot of linker warnings too

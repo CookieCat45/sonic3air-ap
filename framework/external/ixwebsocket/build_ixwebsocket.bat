@@ -9,20 +9,30 @@ call ../get_msbuild_path.bat
 @echo.
 @echo === Building ixwebsocket ===
 
-if not exist .\ixwebsocket\build  mkdir .\ixwebsocket\build
-cmake -DCMAKE_GENERATOR_PLATFORM=x64 -S .\ixwebsocket -B .\ixwebsocket\build
+if not exist .\ixwebsocket\build mkdir .\ixwebsocket\build
+cmake -DCMAKE_GENERATOR_PLATFORM=x64 -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -S .\ixwebsocket -B .\ixwebsocket\build
 
 pushd ixwebsocket\build
 %msbuildPath% ixwebsocket.sln /target:ixwebsocket /property:Configuration=Debug   /property:Platform=x64 -verbosity:minimal
 %msbuildPath% ixwebsocket.sln /target:ixwebsocket /property:Configuration=Release /property:Platform=x64 -verbosity:minimal
 popd
 
-if not exist .\ixwebsocket\buildWin32  mkdir .\ixwebsocket\buildWin32
-cmake -DCMAKE_GENERATOR_PLATFORM=Win32 -S .\ixwebsocket -B .\ixwebsocket\buildWin32
+pushd ixwebsocket\build\mbedtls_bin
+%msbuildPath% "MBed TLS.sln" /target:mbedtls /property:Configuration=Debug   /property:Platform=x64 -verbosity:minimal
+%msbuildPath% "MBed TLS.sln" /target:mbedtls /property:Configuration=Release /property:Platform=x64 -verbosity:minimal
+popd
+
+if not exist .\ixwebsocket\buildWin32 mkdir .\ixwebsocket\buildWin32
+cmake -DCMAKE_GENERATOR_PLATFORM=Win32 -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -S .\ixwebsocket -B .\ixwebsocket\buildWin32
 
 pushd ixwebsocket\buildWin32
 %msbuildPath% ixwebsocket.sln /target:ixwebsocket /property:Configuration=Debug   /property:Platform=Win32 -verbosity:minimal
 %msbuildPath% ixwebsocket.sln /target:ixwebsocket /property:Configuration=Release /property:Platform=Win32 -verbosity:minimal
+popd
+
+pushd ixwebsocket\buildWin32\mbedtls_bin
+%msbuildPath% "MBed TLS.sln" /target:mbedtls /property:Configuration=Debug   /property:Platform=Win32 -verbosity:minimal
+%msbuildPath% "MBed TLS.sln" /target:mbedtls /property:Configuration=Release /property:Platform=Win32 -verbosity:minimal
 popd
 
 call copy_ixwebsocket.bat no_pause
