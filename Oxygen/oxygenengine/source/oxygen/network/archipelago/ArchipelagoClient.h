@@ -61,11 +61,6 @@ private:
 	bool mSetupDone = false;
 	bool mConnecting = false;
 	uint64 mLastConnect = 0;
-	static uint64 now()
-	{
-		return static_cast<uint64>(std::time(nullptr));
-	}
-
 	std::string mPlayerName;
 	uint64 mProcessedItems = 0;
 	bool mNewProg = false;

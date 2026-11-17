@@ -217,10 +217,6 @@ void ArchipelagoClient::registerScriptBindings(lemon::ModuleBindingsBuilder& bui
 
 	builder.addNativeFunction("Archipelago.getLastPacket",
 		lemon::wrap(functions::getLastPacketReader), defaultFlags);
-
-	// it would probably be better to just move this to base lemonscript (e.g. System.getTime) but this is needed for deathlink to work properly
-	builder.addNativeFunction("Archipelago.getTime",
-		lemon::wrap(ArchipelagoClient::now), defaultFlags);
 }
 
 bool ArchipelagoClient::isConnected()
