@@ -3,6 +3,7 @@
 
 #if defined(SUPPORT_IMGUI)
 #include "oxygen/network/archipelago/ArchipelagoClient.h"
+#include <rmxmedia.h>
 
 ImGuiArchipelago::ImGuiArchipelago()
 {
@@ -37,7 +38,7 @@ void ImGuiArchipelago::buildImGuiContent()
 			}
 			else
 			{
-				client.mLastConnect = client.now();
+				client.mLastConnect = FTX::getTime();
 				client.shutdown();
 				client.mConnecting = true;
 				client.init(mServerAddress, mSlotName, mPassword); // the client will handle a successful connection from here
