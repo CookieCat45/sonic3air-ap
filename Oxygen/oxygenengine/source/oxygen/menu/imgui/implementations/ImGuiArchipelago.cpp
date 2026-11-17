@@ -14,7 +14,7 @@ ImGuiArchipelago::ImGuiArchipelago()
 void ImGuiArchipelago::buildImGuiContent()
 {
 	ImGui::SetWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_FirstUseEver);
-	ImGui::SetWindowSize(ImVec2(300.0f, 200.0f), ImGuiCond_FirstUseEver);
+	ImGui::SetWindowSize(ImVec2(400.0f, 300.0f), ImGuiCond_FirstUseEver);
 	auto& client = ArchipelagoClient::instance();
 	if (mShowConnectInput && client.mIniting)
 	{
