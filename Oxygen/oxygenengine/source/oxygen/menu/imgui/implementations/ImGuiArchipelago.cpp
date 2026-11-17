@@ -46,7 +46,7 @@ void ImGuiArchipelago::buildImGuiContent()
 		}
 		else if (client.mConnecting)
 		{
-			bool timeOut = FTX::getTime() - client.mLastConnect > 11;
+			bool timeOut = FTX::getTime() - client.mLastConnect > 11.0;
 			if (timeOut)
 			{
 				mSocketError = "Connection timed out";

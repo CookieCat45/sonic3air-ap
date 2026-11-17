@@ -60,7 +60,7 @@ private:
 	bool mIniting = false;
 	bool mSetupDone = false;
 	bool mConnecting = false;
-	uint64 mLastConnect = 0;
+	float mLastConnect = 0.0;
 	std::string mPlayerName;
 	uint64 mProcessedItems = 0;
 	bool mNewProg = false;
